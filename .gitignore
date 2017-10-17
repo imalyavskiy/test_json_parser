@@ -1,0 +1,17 @@
+/json_lib/Debug/*.log
+/json_lib/Debug/*.pch
+/json_lib/Debug/json_lib.tlog/*.tlog
+/json_lib/Debug/json_lib.tlog/*.lastbuildstate
+/json_lib/Debug/*.obj
+/json_lib/Debug/*.enc
+/json_lib/Debug/*.idb
+/json_lib/Debug/*.pdb
+/json_lib/x64/Debug/*.log
+/json_lib/x64/Debug/*.pch
+/json_lib/x64/Debug/json_lib.tlog/*.tlog
+/json_lib/x64/Debug/json_lib.tlog/*.lastbuildstate
+/json_lib/x64/Debug/*.obj
+/json_lib/x64/Debug/*.idb
+/json_lib/x64/Debug/*.pdb
+/Debug
+/x64

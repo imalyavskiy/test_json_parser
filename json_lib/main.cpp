@@ -3,51 +3,42 @@
 
 #include "json_tokenizer.h"
 
-std::string src
-(	"{"
-		"\"glossary\": "
-			"{"
-				"\"title\": \"example glossary\","
-				"\"GlossDiv\" : "
-					"{"
-						"\"title\": \"S\","
-						"\"GlossList\" : "
-							"{"
-								"\"GlossEntry\": "
-									"{"
-										"\"ID\": \"SGML\","
-										"\"SortAs\" : \"SGML\","
-										"\"GlossTerm\" : \"Standard Generalized Markup Language\","
-										"\"Acronym\" : \"SGML\","
-										"\"Abbrev\" : \"ISO 8879:1986\","
-										"\"GlossDef\" : "
-											"{"
-												"\"para\": \"A meta-markup language, used to create markup languages such as DocBook.\","
-												"\"GlossSeeAlso\" : [\"GML\", \"XML\"]"
-											"},"
-										"\"GlossSee\" : \"markup\""
-									"}"
-							"}"
-					"}"
-			"}"
-	"}");
-std::string src2
-(	"{"
-	"\"one\""	":" "\"1\","
-	"\"two\""	":" "\"2\","
-	"\"three\"" ":" "\"3\","
-	"\"four\""	":" "\"4\","
-	"\"five\""	":" "\"5\","
-	"\"six\""	":" "\"6\","
-	"\"seven\"" ":" "\"7\","
-	"\"eight\"" ":" "\"8\","
-	"\"nine\""	":" "\"9\","
-	"\"zero\""	":" "\"0\""
-	"}");
-
-int main()
+bool read_cmd_line(int argc, char** argv, std::string& source_file)
 {
-	json::tokenizer tokenizer;
-	return (int)tokenizer.process(src2);
+	auto print_usage = []() { std::cout << "USAGE: The only parameter is the text source file path." << std::endl; };
+
+	if (argc < 2)
+		std::cout << "[ERROR] Not enough parameters!" << std::endl, print_usage(), exit(1);
+	if (argc > 2)
+		std::cout << "[ERROR] Too many parameters!" << std::endl, print_usage(), exit(1);
+
+	std::ifstream src(argv[1]);
+	if (!src.is_open())
+		std::cout << "[ERROR] Check does the file exist." << std::endl, print_usage(), exit(1);
+	else
+		src.close();
+
+	source_file = argv[1];
+
+	return true;
+}
+
+int main(int argc, char** argv)
+{
+	json::error error = json::error::ok;
+
+	json::json_parser tokenizer;
+
+	std::string source_file_name;
+	if (!read_cmd_line(argc, argv, source_file_name))
+		return (int)error;
+
+	std::ifstream source_file(source_file_name, std::ios::in);
+
+	error = json::process(source_file);
+
+	source_file.close();
+
+	return (int)error;
 }
 
