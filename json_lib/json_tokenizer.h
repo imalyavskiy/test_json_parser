@@ -8,6 +8,17 @@ namespace json
 		fatal = -1,
 	};
 
+	// for debug purpose
+	enum class parser_id
+	{
+		parser_json,
+		parser_string,
+		parser_number,
+		parser_bool,
+		parser_null,
+		parser_array,
+	};
+
 #pragma region -- state machine types --
 	using processig_func = std::function<error(const char&, const int)>;
 
@@ -50,9 +61,13 @@ namespace json
 	{
 		typedef std::shared_ptr<parser> ptr;
 
+		parser(const parser_id id) : m_id(id) {}
+
 		virtual ~parser() {};
 
 		virtual error step(const char& c, const int pos) = 0;
+
+		const parser_id m_id;
 	};
 
 	template<typename SymbolsType, typename StateType, StateType initial_state>
@@ -64,6 +79,8 @@ namespace json
 		using symbol_t = SymbolsType;
 		using StateTable_t = StateTable<StateType, SymbolsType>;
 
+		parser_impl(const parser_id id) : parser(id) {};
+		
 		// The step of the automata
 		virtual error step(const char& c, const int pos) final
 		{
@@ -99,7 +116,7 @@ namespace json
 		inside,
 		escape,
 		unicode,
-		failure
+		_fail_
 	};
 
 	enum class e_string_special_symbols
@@ -130,7 +147,7 @@ namespace json
 			case e_string_read_state::inside:		str = "inside";					break;
 			case e_string_read_state::escape:		str = "escape";					break;
 			case e_string_read_state::unicode:		str = "unicode";				break;
-			case e_string_read_state::failure:		str = "failure";				break;
+			case e_string_read_state::_fail_:		str = "failure";				break;
 			default:								str = "unknown", assert(0);		break;
 			}
 
@@ -176,9 +193,12 @@ namespace json
 	{
 		initial,
 		minus,
+		zero,
+		dot,
 		integer,
 		fractional,
 		exponential,
+		_failure_,
 	};
 
 	enum class e_number_special_symbols
@@ -189,8 +209,8 @@ namespace json
 		dec_zero	= 0x30,	// 0
 		dec_digit,			// 0x31 - 0x39
 		dot			= 0x2E,	// .
-		exponent_E	= 0x45,	// E
-		exponenr_e	= 0x65,	// e
+		exponent	= 0x45,	// E or 0x65 - e
+		other,
 	};
 
 	template<>
@@ -238,7 +258,12 @@ namespace json
 		error on_integer(const char& c, const int pos);
 		error on_fractional(const char& c, const int pos);
 		error on_exponential(const char& c, const int pos);
+		error on_failure(const char& c, const int pos);
+		error on_zero(const char& c, const int pos);
+		error on_dot(const char& c, const int pos);
 	
+		virtual symbol_t token_type_of(const char& c) const override;
+
 	protected:
 		const StateTable_t m_state_table;
 	};
@@ -350,6 +375,8 @@ namespace json
 		parser::ptr				m_bool_parser;
 		parser::ptr				m_null_parser;
 		parser::ptr				m_array_parser;
+
+		std::list<parser::ptr>	m_active_parsers;
 	};
 #pragma endregion
 

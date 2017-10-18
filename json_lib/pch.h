@@ -18,5 +18,6 @@
 #include <cassert>
 #include <fstream>
 #include <iomanip>
+#include <algorithm>
 
 // TODO: reference additional headers your program requires here

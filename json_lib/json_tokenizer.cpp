@@ -4,51 +4,52 @@ using namespace json;
 #define BIND(__CLASS_METHOD__) std::bind(&__CLASS_METHOD__, this, std::placeholders::_1, std::placeholders::_2)
 #pragma region -- key_string_parser --
 string_parser::string_parser()
-	: m_state_table
+	: parser_impl(parser_id::parser_string)
+	, m_state_table
 	{
-		{ e_string_read_state::outside,	{		{ e_string_special_symbols::Quote,					{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::ReverseSolidus,			{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Solidus,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::BackSpace,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::FormFeed,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::LineFeed,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::CarriageReturn,			{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::HTab,					{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Unicode,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Other,					{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
+		{ read_state_t::outside,{		{ symbol_t::Quote,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::ReverseSolidus,			{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Solidus,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::BackSpace,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::FormFeed,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::LineFeed,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::CarriageReturn,			{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::HTab,					{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Unicode,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Other,					{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
 		} },
-		{ e_string_read_state::inside,	{		{ e_string_special_symbols::Quote,					{ e_string_read_state::outside,	BIND(string_parser::on_outside)	} },
-												{ e_string_special_symbols::ReverseSolidus,			{ e_string_read_state::escape,	BIND(string_parser::on_escape)	} },
-												{ e_string_special_symbols::Solidus,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::BackSpace,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::FormFeed,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::LineFeed,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::CarriageReturn,			{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::HTab,					{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::Unicode,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::Other,					{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
+		{ read_state_t::inside,	{		{ symbol_t::Quote,					{ read_state_t::outside,	BIND(string_parser::on_outside)	} },
+										{ symbol_t::ReverseSolidus,			{ read_state_t::escape,		BIND(string_parser::on_escape)	} },
+										{ symbol_t::Solidus,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::BackSpace,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::FormFeed,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::LineFeed,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::CarriageReturn,			{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::HTab,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::Unicode,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::Other,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
 		} },
-		{ e_string_read_state::escape,	{		{ e_string_special_symbols::Quote,					{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::ReverseSolidus,			{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::Solidus,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::BackSpace,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::FormFeed,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::LineFeed,				{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::CarriageReturn,			{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::HTab,					{ e_string_read_state::inside,	BIND(string_parser::on_inside)	} },
-												{ e_string_special_symbols::Unicode,				{ e_string_read_state::inside,	BIND(string_parser::on_unicode)	} },
-												{ e_string_special_symbols::Other,					{ e_string_read_state::failure,	BIND(string_parser::on_failure) } },
+		{ read_state_t::escape,	{		{ symbol_t::Quote,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::ReverseSolidus,			{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::Solidus,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::BackSpace,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::FormFeed,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::LineFeed,				{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::CarriageReturn,			{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::HTab,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
+										{ symbol_t::Unicode,				{ read_state_t::inside,		BIND(string_parser::on_unicode)	} },
+										{ symbol_t::Other,					{ read_state_t::_fail_,		BIND(string_parser::on_failure) } },
 		} },
-		{ e_string_read_state::unicode,	{		{ e_string_special_symbols::Quote,					{ e_string_read_state::inside,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::ReverseSolidus,			{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Solidus,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::BackSpace,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::FormFeed,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::LineFeed,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::CarriageReturn,			{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::HTab,					{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Unicode,				{ e_string_read_state::failure,	BIND(string_parser::on_failure)	} },
-												{ e_string_special_symbols::Other,					{ e_string_read_state::unicode,	BIND(string_parser::on_unicode) } },
+		{ read_state_t::unicode,{		{ symbol_t::Quote,					{ read_state_t::inside,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::ReverseSolidus,			{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Solidus,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::BackSpace,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::FormFeed,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::LineFeed,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::CarriageReturn,			{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::HTab,					{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Unicode,				{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
+										{ symbol_t::Other,					{ read_state_t::unicode,	BIND(string_parser::on_unicode) } },
 		} },
 	}
 {
@@ -91,7 +92,7 @@ string_parser::on_unicode(const char&c, const int pos)
 error 
 string_parser::on_failure(const char&c, const int pos)
 {
-	state::set(e_string_read_state::failure);
+	state::set(e_string_read_state::_fail_);
 	return error::fatal;
 }
 
@@ -131,6 +132,74 @@ string_parser::token_type_of(const char& c) const
 #pragma endregion
 #pragma region -- number_praser --
 number_parser::number_parser()
+	: parser_impl(parser_id::parser_number)
+	, m_state_table
+	{
+		{ read_state_t::initial,{		{ symbol_t::minus,					{ read_state_t::minus,			BIND(number_parser::on_minus)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::zero,			BIND(number_parser::on_zero)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::integer,		BIND(number_parser::on_initial)	} },
+										{ symbol_t::dot,					{ read_state_t::dot,			BIND(number_parser::on_dot)		} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::minus,{			{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::zero,			BIND(number_parser::on_zero)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::integer,		BIND(number_parser::on_integer)	} },
+										{ symbol_t::dot,					{ read_state_t::dot,			BIND(number_parser::on_dot)		} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::zero,{			{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::dot,			BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::dot,{			{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::fractional,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::fractional,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::integer,{		{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::fractional,{	{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::exponential,{	{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+		{ read_state_t::_failure_,{		{ symbol_t::minus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::plus,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_zero,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dec_digit,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::dot,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::exponent,				{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+										{ symbol_t::other,					{ read_state_t::_failure_,		BIND(number_parser::on_failure)	} },
+		} },
+	}
 {
 }
 
@@ -141,41 +210,81 @@ number_parser::~number_parser()
 error 
 number_parser::on_initial(const char& c, const int pos)
 {
+	state::set(read_state_t::initial);
 	return error::ok;
 }
 
 error 
 number_parser::on_minus(const char& c, const int pos)
 {
+	state::set(read_state_t::minus);
 	return error::ok;
 }
 
 error 
 number_parser::on_integer(const char& c, const int pos)
 {
+	state::set(read_state_t::integer);
 	return error::ok;
 }
 
 error 
 number_parser::on_fractional(const char& c, const int pos)
 {
+	state::set(read_state_t::fractional);
 	return error::ok;
 }
 
 error 
 number_parser::on_exponential(const char& c, const int pos)
 {
+	state::set(read_state_t::exponential);
 	return error::ok;
+}
+
+error 
+number_parser::on_failure(const char& c, const int pos)
+{
+	state::set(read_state_t::_failure_);
+	return error::fatal;
+}
+
+error 
+number_parser::on_zero(const char& c, const int pos)
+{
+	state::set(read_state_t::zero);
+	return error::ok;
+}
+
+error 
+number_parser::on_dot(const char& c, const int pos)
+{
+	state::set(read_state_t::dot);
+	return error::ok;
+}
+
+number_parser::symbol_t
+number_parser::token_type_of(const char& c) const
+{
+	if ((char)symbol_t::minus == c)
+		return symbol_t::minus;
+	if ((char)symbol_t::plus == c)
+		return symbol_t::plus;
+	if ((char)symbol_t::dec_zero == c)
+		return symbol_t::dec_zero;
+	if ((char)symbol_t::dot == c)
+		return symbol_t::dot;
+	if ((char)0x45 == c || (char)0x65 == c)
+		return symbol_t::exponent;
+	if (0x31 <= c && c <= 0x39)
+		return symbol_t::dec_digit;
+
+	return symbol_t::other;
 }
 #pragma endregion
 #pragma region -- json_parser --
 json_parser::json_parser()
-	: m_str_parser(new string_parser())
-	, m_json_parser(new json_parser())
-	, m_num_parser(nullptr)
-	, m_bool_parser(nullptr)
-	, m_null_parser(nullptr)
-	, m_array_parser(nullptr)
+	: parser_impl(parser_id::parser_json)
 	, m_state_table
 	{											// got													// transit to						// action
 		{ e_json_read_state::initial,	{	/*}*/ { e_json_special_symbols::left_curly_brace,		{ e_json_read_state::rd_key_str,	BIND(json_parser::on_in_object)	} },
@@ -311,6 +420,9 @@ json_parser::on_initial(const char& c, const int pos)
 error
 json_parser::on_reading_key(const char& c, const int pos)
 {
+	if (!m_str_parser)
+		m_str_parser.reset(new string_parser);
+
 	state::set(e_json_read_state::rd_key_str);
 	if (error::done == m_str_parser->step(c, pos))
 	{
@@ -337,6 +449,23 @@ error
 json_parser::on_wait_value(const char& c, const int pos)
 {
 	state::set(e_json_read_state::wt_value);
+	
+	m_active_parsers.clear();
+
+	if (!m_json_parser) m_json_parser.reset(new json_parser());
+	if (!m_str_parser) m_str_parser.reset(new string_parser());
+	if (!m_num_parser) m_num_parser.reset(new number_parser());
+	if (!m_bool_parser) m_bool_parser.reset();
+	if (!m_null_parser) m_null_parser.reset();
+	if (!m_array_parser) m_array_parser.reset();
+
+	m_active_parsers.push_back(m_json_parser);
+	m_active_parsers.push_back(m_str_parser);
+	m_active_parsers.push_back(m_num_parser);
+	m_active_parsers.push_back(m_bool_parser);
+	m_active_parsers.push_back(m_null_parser);
+	m_active_parsers.push_back(m_array_parser);
+
 	return error::ok;
 }
 
@@ -345,7 +474,29 @@ json_parser::on_reading_value(const char& c, const int pos)
 {
 	state::set(e_json_read_state::rd_value);
 	
-	#error
+	auto it = m_active_parsers.begin();
+	while (it != m_active_parsers.end())
+	{
+		if (nullptr == *it)
+		{
+			m_active_parsers.erase(it);
+			it = m_active_parsers.begin();
+			continue;
+		}
+		it++;
+	}
+
+	if (m_active_parsers.empty())
+		return error::fatal;
+
+	for (parser::ptr& p : m_active_parsers)
+	{
+		error result = error::ok;
+		if (p)
+			result = p->step(c, pos);
+		if (result == error::fatal)
+			p.reset();
+	}
 
 	return error::ok;
 }
@@ -369,7 +520,7 @@ json_parser::on_failure(const char& c, const int pos)
 {
 	state::set(e_json_read_state::__fail__);
 	std::cout << "\t" << "Failed at: pos=" << pos << "(0x" << std::hex << std::setw(2) << std::setfill('0') << (int)c << ")" << std::resetiosflags(std::ios_base::basefield) << std::endl;
-	return error::ok;
+	return error::fatal;
 }
 #pragma endregion
 
