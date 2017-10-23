@@ -1,4 +1,8 @@
 #pragma once
+
+#ifndef __PARSER_JSON_H__
+#define __PARSER_JSON_H__
+
 namespace json
 {
 	enum class error
@@ -383,3 +387,5 @@ namespace json
 	error process(const std::string& input);
 	error process(/*const*/ std::istream& input);
 } 
+
+#endif // __PARSER_JSON_H__

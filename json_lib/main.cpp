@@ -1,7 +1,7 @@
 // main.cpp : Defines the entry point for the console application.
 //
 
-#include "json_tokenizer.h"
+#include "parser_json.h"
 
 bool read_cmd_line(int argc, char** argv, std::string& source_file)
 {
