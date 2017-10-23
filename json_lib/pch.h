@@ -4,6 +4,8 @@
 //
 
 #pragma once
+#ifndef __PCH_H__
+#define __PCH_H__
 
 #include <string>
 #include <iostream>
@@ -21,3 +23,5 @@
 #include <algorithm>
 
 // TODO: reference additional headers your program requires here
+
+#endif // __PCH_H__

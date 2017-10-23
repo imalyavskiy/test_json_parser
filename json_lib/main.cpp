@@ -1,6 +1,9 @@
 // main.cpp : Defines the entry point for the console application.
 //
-
+#include "parser_base.h"
+#include "parser_number.h"
+#include "parser_string.h"
+#include "parser_array.h"
 #include "parser_json.h"
 
 bool read_cmd_line(int argc, char** argv, std::string& source_file)
@@ -23,6 +26,37 @@ bool read_cmd_line(int argc, char** argv, std::string& source_file)
 	return true;
 }
 
+json::error
+process(/*const */std::istream& input)
+{
+	char c = 0;
+	json::json_parser p;
+
+	while (input >> std::noskipws >> c)
+	{
+		std::cout << c;
+
+		if (json::error::ok != p.step(c, (int)input.tellg() - 1))
+		{
+			std::cout << "Error while parsing" << std::endl;
+			break;
+		}
+	}
+
+	std::cout << std::endl;
+
+	return json::error::ok;
+}
+
+json::error
+process(const std::string& input)
+{
+	std::stringstream sstr;
+	sstr.str(input);
+	return process(sstr);
+}
+
+
 int main(int argc, char** argv)
 {
 	json::error error = json::error::ok;
@@ -35,7 +69,7 @@ int main(int argc, char** argv)
 
 	std::ifstream source_file(source_file_name, std::ios::in);
 
-	error = json::process(source_file);
+	error = process(source_file);
 
 	source_file.close();
 
