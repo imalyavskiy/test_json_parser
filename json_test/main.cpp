@@ -1,6 +1,8 @@
 // main.cpp : Defines the entry point for the console application.
 //
-#include "parsers.h"
+#include "../json_lib/json_lib.h"
+
+typedef json::result result;
 
 bool read_cmd_line(int argc, char** argv, std::string& source_file)
 {
@@ -22,17 +24,19 @@ bool read_cmd_line(int argc, char** argv, std::string& source_file)
 	return true;
 }
 
-json::error
+json::result
 process(/*const */std::istream& input)
 {
 	char c = 0;
-	json::json_parser p;
+	json::parser::ptr p = json::create_number_parser();
+	if (!p)
+		return result::e_fatal;
 
 	while (input >> std::noskipws >> c)
 	{
 		std::cout << c;
 
-		if (json::error::ok != p.step(c, (int)input.tellg() - 1))
+		if (json::result::s_ok > p->step(c, (int)input.tellg() - 1))
 		{
 			std::cout << "Error while parsing" << std::endl;
 			break;
@@ -41,10 +45,10 @@ process(/*const */std::istream& input)
 
 	std::cout << std::endl;
 
-	return json::error::ok;
+	return json::result::s_ok;
 }
 
-json::error
+json::result
 process(const std::string& input)
 {
 	std::stringstream sstr;
@@ -52,23 +56,20 @@ process(const std::string& input)
 	return process(sstr);
 }
 
-
 int main(int argc, char** argv)
 {
-	json::error error = json::error::ok;
-
-	json::json_parser tokenizer;
+	json::result res = json::result::s_ok;
 
 	std::string source_file_name;
 	if (!read_cmd_line(argc, argv, source_file_name))
-		return (int)error;
+		return (int)res;
 
 	std::ifstream source_file(source_file_name, std::ios::in);
 
-	error = process(source_file);
+	res = process(source_file);
 
 	source_file.close();
 
-	return (int)error;
+	return (int)res;
 }
 

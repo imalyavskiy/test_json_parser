@@ -6,23 +6,25 @@ namespace json
 	enum class e_number_read_state
 	{
 		initial,
-		minus,
+		leading_minus,
 		zero,
 		dot,
 		integer,
 		fractional,
-		exponential,
-		_failure_,
+		exponent_delim,
+		exponent_sign,
+		exponent_val,
+		done,
 	};
 
 	enum class e_number_special_symbols
 	{
 		// ascii part
-		minus = 0x2D,	// -
-		plus = 0x2B,	// +
+		minus = 0x2D,		// -
+		plus = 0x2B,		// +
 		dec_zero = 0x30,	// 0
 		dec_digit,			// 0x31 - 0x39
-		dot = 0x2E,	// .
+		dot = 0x2E,			// .
 		exponent = 0x45,	// E or 0x65 - e
 		other,
 	};
@@ -36,12 +38,17 @@ namespace json
 
 			switch (s)
 			{
-			case e_number_read_state::initial:		str = "initial";				break;
-			case e_number_read_state::minus:		str = "minus";					break;
-			case e_number_read_state::integer:		str = "integer";				break;
-			case e_number_read_state::fractional:	str = "fractional";				break;
-			case e_number_read_state::exponential:	str = "exponential";			break;
-			default:								str = "unknown", assert(0);		break;
+			case e_number_read_state::initial:			str = "initial";				break;
+			case e_number_read_state::leading_minus:	str = "leading_minus";			break;
+			case e_number_read_state::zero:				str = "zero";					break;
+			case e_number_read_state::dot:				str = "dot";					break;
+			case e_number_read_state::integer:			str = "integer";				break;
+			case e_number_read_state::fractional:		str = "fractional";				break;
+			case e_number_read_state::exponent_delim:	str = "exponent_delim";			break;
+			case e_number_read_state::exponent_sign:	str = "exponent_sign";			break;
+			case e_number_read_state::exponent_val:		str = "exponent_val";			break;
+			case e_number_read_state::done:				str = "done";					break;
+			default:									str = "unknown", assert(0);		break;
 			}
 
 			return str;
@@ -65,21 +72,35 @@ namespace json
 		~number_parser();
 
 	protected:
+		virtual result step(const char& c, const int pos) final;
+
 		virtual const StateTable_t& table() override { return m_state_table; }
 
-		error on_initial(const char& c, const int pos);
-		error on_minus(const char& c, const int pos);
-		error on_integer(const char& c, const int pos);
-		error on_fractional(const char& c, const int pos);
-		error on_exponential(const char& c, const int pos);
-		error on_failure(const char& c, const int pos);
-		error on_zero(const char& c, const int pos);
-		error on_dot(const char& c, const int pos);
+		result on_initial(const unsigned char& c, const int pos);
+		result on_minus(const unsigned char& c, const int pos);
+		result on_integer(const unsigned char& c, const int pos);
+		result on_fractional(const unsigned char& c, const int pos);
+		result on_exponent(const unsigned char& c, const int pos);
+		result on_exponent_sign(const unsigned char& c, const int pos);
+		result on_exponent_value(const unsigned char& c, const int pos);
+		result on_zero(const unsigned char& c, const int pos);
+		result on_dot(const unsigned char& c, const int pos);
 
 		virtual symbol_t token_type_of(const char& c) const override;
 
+		virtual void reset() final;
+
+		static result append_digit(int& val, const unsigned char& c);
+
 	protected:
 		const StateTable_t m_state_table;
+
+		bool m_positive;
+		int  m_integer;
+		int  m_fractional;
+		bool m_has_exponent;
+		bool m_exponent_positive;
+		int  m_exponent_value;
 	};
 }
 #endif // __PARSER_NUMBER_H__

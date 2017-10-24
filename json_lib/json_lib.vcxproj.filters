@@ -15,12 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -39,13 +33,16 @@
     <ClCompile Include="parser_object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="parser_false.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="parser_null.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="parser_true.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json_lib.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="parser_bool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -68,9 +65,6 @@
     <ClInclude Include="parser_object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="parser_false.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="parser_null.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -78,6 +72,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parsers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json_lib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parser_bool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

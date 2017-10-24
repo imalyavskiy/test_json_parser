@@ -5,13 +5,6 @@
 
 namespace json
 {
-	enum class error
-	{
-		ok = 0,
-		done = 1,
-		fatal = -1,
-	};
-
 	// for debug purpose
 	enum class parser_id
 	{
@@ -24,7 +17,7 @@ namespace json
 	};
 
 #pragma region -- state machine types --
-	using processig_func = std::function<error(const char&, const int)>;
+	using processig_func = std::function<result(const char&, const int)>;
 
 	// tt_pair: state, function
 	template <typename _READSTATE, typename _STATE_CHANGE_HANDLER>
@@ -60,20 +53,6 @@ namespace json
 		void set(STATE new_state) { m_state = new_state; }
 	};
 
-
-	struct parser
-	{
-		typedef std::shared_ptr<parser> ptr;
-
-		parser(const parser_id id) : m_id(id) {}
-
-		virtual ~parser() {};
-
-		virtual error step(const char& c, const int pos) = 0;
-
-		const parser_id m_id;
-	};
-
 	template<typename SymbolsType, typename StateType, StateType initial_state>
 	class parser_impl
 		: protected state<StateType, initial_state>
@@ -83,22 +62,28 @@ namespace json
 		using symbol_t = SymbolsType;
 		using StateTable_t = StateTable<StateType, SymbolsType>;
 
-		parser_impl(const parser_id id) : parser(id) {};
+		parser_impl() {};
 
 		// The step of the automata
-		virtual error step(const char& c, const int pos) final
+		virtual result step(const char& c, const int pos) override
 		{
 			symbol_t symbol = token_type_of(c);
 
 			if (nullptr == m_current_processing_func)
 			{
-				auto state = state::get();
-				auto transition_group = table().at(state);
-				auto transition = transition_group.at(symbol);
+				auto transition_group = table().at(state::get());
+				if (transition_group.end() != transition_group.find(symbol))
+				{
+					auto transition = transition_group.at(symbol);
+					assert(transition.second);
+					result res = transition.second(c, pos);
+					if (res > result::e_fatal)
+						state::set(transition.first);
 
-				assert(transition.second);
-
-				return transition.second(c, pos);
+					return res;
+				}
+				else
+					return result::e_unexpected;
 			}
 
 			return m_current_processing_func(c, pos);

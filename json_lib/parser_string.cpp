@@ -3,8 +3,7 @@
 using namespace json;
 
 string_parser::string_parser()
-	: parser_impl(parser_id::parser_string)
-	, m_state_table
+	: m_state_table
 	{
 		{ read_state_t::outside,{		{ symbol_t::Quote,					{ read_state_t::inside,		BIND(string_parser::on_inside)	} },
 										{ symbol_t::ReverseSolidus,			{ read_state_t::_fail_,		BIND(string_parser::on_failure)	} },
@@ -60,39 +59,39 @@ string_parser::~string_parser()
 
 }
 
-error 
+result
 string_parser::on_outside(const char&c, const int pos)
 {
 	state::set(e_string_read_state::outside);
-	return error::done;
+	return result::s_done;
 }
 
-error 
+result
 string_parser::on_inside(const char&c, const int pos)
 {
 	state::set(e_string_read_state::inside);
-	return error::ok;
+	return result::s_ok;
 }
 
-error 
+result
 string_parser::on_escape(const char&c, const int pos)
 {
 	state::set(e_string_read_state::escape);
-	return error::ok;
+	return result::s_ok;
 }
 
-error 
+result
 string_parser::on_unicode(const char&c, const int pos)
 {
 	state::set(e_string_read_state::unicode);
-	return error::ok;
+	return result::s_ok;
 }
 
-error 
+result
 string_parser::on_failure(const char&c, const int pos)
 {
 	state::set(e_string_read_state::_fail_);
-	return error::fatal;
+	return result::e_fatal;
 }
 
 e_string_special_symbols
@@ -127,4 +126,10 @@ string_parser::token_type_of(const char& c) const
 		return (state != read_state_t::escape) ? symbol_t::Other: symbol_t::Unicode;
 	
 	return symbol_t::Other;
+}
+
+void 
+string_parser::reset()
+{
+
 }

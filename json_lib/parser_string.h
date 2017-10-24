@@ -69,13 +69,15 @@ namespace json
 	protected:
 		virtual const StateTable_t& table() override { return m_state_table; }
 
-		error on_outside(const char&c, const int pos);
-		error on_inside(const char&c, const int pos);
-		error on_escape(const char&c, const int pos);
-		error on_unicode(const char&c, const int pos);
-		error on_failure(const char&c, const int pos);
+		result on_outside(const char&c, const int pos);
+		result on_inside(const char&c, const int pos);
+		result on_escape(const char&c, const int pos);
+		result on_unicode(const char&c, const int pos);
+		result on_failure(const char&c, const int pos);
 
 		virtual symbol_t token_type_of(const char& c) const override;
+
+		virtual void reset() final;
 
 	protected:
 		const StateTable_t m_state_table;

@@ -75,30 +75,32 @@ namespace json
 		m_state = new_state;
 	}
 
-	class json_parser
+	class object_parser
 		: public parser_impl<e_json_special_symbols, e_json_read_state, e_json_read_state::initial>
 	{
 		using symbol_t		= e_json_special_symbols;
 		using read_state_t	= e_json_read_state;
 		using StateTable_t	= StateTable<read_state_t, symbol_t>;
 	public:
-		json_parser();
-		~json_parser();
+		object_parser();
+		~object_parser();
 
 	protected:
 
 		virtual const StateTable_t& table() override { return m_state_table; }
 
-		error on_initial(const char& c, const int pos);
-		error on_reading_key(const char& c, const int pos);
-		error on_wait_colon(const char& c, const int pos);
-		error on_wait_value(const char& c, const int pos);
-		error on_reading_value(const char& c, const int pos);
-		error on_in_object(const char& c, const int pos);
-		error on_out_object(const char& c, const int pos);
-		error on_failure(const char& c, const int pos);
+		result on_initial(const char& c, const int pos);
+		result on_reading_key(const char& c, const int pos);
+		result on_wait_colon(const char& c, const int pos);
+		result on_wait_value(const char& c, const int pos);
+		result on_reading_value(const char& c, const int pos);
+		result on_in_object(const char& c, const int pos);
+		result on_out_object(const char& c, const int pos);
+		result on_failure(const char& c, const int pos);
 		
 		virtual symbol_t token_type_of(const char& c) const override;
+
+		virtual void reset() final;
 
 	protected:
 		const StateTable_t m_state_table;
