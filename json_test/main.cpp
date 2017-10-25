@@ -28,17 +28,15 @@ json::result
 process(/*const */std::istream& input)
 {
 	char c = 0;
-	json::parser::ptr p = json::create_number_parser();
+	json::parser::ptr p = json::create_string_parser();
 	if (!p)
 		return result::e_fatal;
 
 	while (input >> std::noskipws >> c)
 	{
-		std::cout << c;
-
 		if (json::result::s_ok > p->step(c, (int)input.tellg() - 1))
 		{
-			std::cout << "Error while parsing" << std::endl;
+			std::cout << "Error while parsing: reason \'" << c << "\'" << std::endl;
 			break;
 		}
 	}

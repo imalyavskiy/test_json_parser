@@ -71,7 +71,9 @@ namespace json
 		if (m_state == new_state)
 			return;
 
-		std::cout << "\t" << "JSON parser: " << state_2_string(m_state) << " -> " << state_2_string(new_state) << "." << std::endl;
+#ifdef _DEBUG
+		std::cout << "object parser: " << state_2_string(m_state) << " -> " << state_2_string(new_state) << ":\t";
+#endif // _DEBUG
 		m_state = new_state;
 	}
 

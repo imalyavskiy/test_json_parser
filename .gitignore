@@ -15,3 +15,6 @@
 /json_lib/x64/Debug/*.pdb
 /Debug
 /x64
+/_bin
+/_int
+/.vs

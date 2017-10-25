@@ -23,23 +23,17 @@ json::create_number_parser()
 json::parser::ptr 
 json::create_string_parser()
 {
-	return json::parser::ptr();
+	return json::parser::ptr(new string_parser());
 }
 
 json::parser::ptr 
 json::create_null_parser()
 {
-	return json::parser::ptr();
+	return json::parser::ptr(new null_parser());
 }
 
 json::parser::ptr 
-json::create_false_parser()
+json::create_bool_parser() 
 {
-	return json::parser::ptr();
-}
-
-json::parser::ptr 
-json::create_true_parser()
-{
-	return json::parser::ptr();
+	return json::parser::ptr(new bool_parser());
 }

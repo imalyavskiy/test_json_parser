@@ -237,7 +237,9 @@ result
 object_parser::on_failure(const char& c, const int pos)
 {
 	state::set(e_json_read_state::__fail__);
-	std::cout << "\t" << "Failed at: pos=" << pos << "(0x" << std::hex << std::setw(2) << std::setfill('0') << (int)c << ")" << std::resetiosflags(std::ios_base::basefield) << std::endl;
+#ifdef _DEBUG
+	std::cout << "Failed at: pos=" << pos << "(0x" << std::hex << std::setw(2) << std::setfill('0') << (int)c << ")" << std::resetiosflags(std::ios_base::basefield) << std::endl;
+#endif // _DEBUG
 	return result::e_fatal;
 }
 

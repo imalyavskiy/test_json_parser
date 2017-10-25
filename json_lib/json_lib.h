@@ -27,7 +27,6 @@ namespace json
 	parser::ptr create_number_parser();
 	parser::ptr create_string_parser();
 	parser::ptr create_null_parser();
-	parser::ptr create_false_parser();
-	parser::ptr create_true_parser();
+	parser::ptr create_bool_parser();
 }
 #endif // __JSON_LIB_H__

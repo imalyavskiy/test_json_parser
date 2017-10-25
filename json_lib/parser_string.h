@@ -6,30 +6,51 @@ namespace json
 
 	enum class e_string_read_state
 	{
-		outside,
+		initial,	// wait for " and skipping space charscters - space, hrisontal tab, crlf, lf
 		inside,
 		escape,
-		unicode,
-		_fail_
+		cr,
+		lf,
+		unicode_1,
+		unicode_2,
+		unicode_3,
+		unicode_4,
+		done,
 	};
 
 	enum class e_string_special_symbols
 	{
 		// ascii part
-		Other = 0x0000,
-		Quote = 0x0022,			// "
-		ReverseSolidus = 0x005c,			// backslash
-		Solidus = 0x002F,			// slash
-		BackSpace = 0x0062,			// backspace
-		FormFeed = 0x0066,			// formfeed(FF) - A printer command that advances the paper in the printer to the top of the next page.
-		LineFeed = 0x006E,			// LF
-		CarriageReturn = 0x0072,			// CR
-		HTab = 0x0074,			// tab
-		Unicode = 0x0075,			// u + XXXX (4 hex digits)
+		other			= 0xffff,
+		hex_digit		= 0xfffe,
+		// ...
+		quote			= 0x22,
+		back_slash		= 0x5c,
+		slash			= 0x2F,
+		// ...
+		numeric_0		= 0x30,
+		// 0x31 - 0x38
+		numeric_9		= 0x39,
+		// ...
+		alpha_A			= 0x41,
+		// 0x42 - 0x45
+		alpha_F			= 0x46,
+		// ...
+		alpha_a			= 0x61,
+		alpha_b			= 0x62,
+		// 0x63 - 0x65
+		alpha_f			= 0x66,
+		// ...
+		alpha_n			= 0x6E,
+		// ...
+		alpha_r			= 0x72,
+		// ...
+		alpha_t			= 0x74,
+		alpha_u			= 0x75,
 	};
 
 	template<>
-	void state<e_string_read_state, e_string_read_state::outside>::set(e_string_read_state new_state)
+	void state<e_string_read_state, e_string_read_state::initial>::set(e_string_read_state new_state)
 	{
 		auto state_2_string = [](e_string_read_state s)->std::string
 		{
@@ -37,12 +58,18 @@ namespace json
 
 			switch (s)
 			{
-			case e_string_read_state::outside:		str = "before";					break;
-			case e_string_read_state::inside:		str = "inside";					break;
-			case e_string_read_state::escape:		str = "escape";					break;
-			case e_string_read_state::unicode:		str = "unicode";				break;
-			case e_string_read_state::_fail_:		str = "failure";				break;
-			default:								str = "unknown", assert(0);		break;
+			case e_string_read_state::initial:		str = "initial";	break;
+			case e_string_read_state::inside:		str = "inside";		break;
+			case e_string_read_state::escape:		str = "escape";		break;
+			case e_string_read_state::cr:			str = "cr";			break;
+			case e_string_read_state::lf:			str = "lf";			break;
+			case e_string_read_state::unicode_1:
+			case e_string_read_state::unicode_2:
+			case e_string_read_state::unicode_3:
+			case e_string_read_state::unicode_4:
+													str = "unicode";	break;
+			case e_string_read_state::done:			str = "done";		break;
+			default:								str = "unknown";	break;
 			}
 
 			return str;
@@ -50,13 +77,14 @@ namespace json
 
 		if (m_state == new_state)
 			return;
-
-		std::cout << "\t" << "String parser: " << state_2_string(m_state) << " -> " << state_2_string(new_state) << "." << std::endl;
+#ifdef _DEBUG
+		std::cout << "\n" << "string parser: " << state_2_string(m_state) << " -> " << state_2_string(new_state) << ":\t";
+#endif // _DEBUG
 		m_state = new_state;
 	}
 
 	class string_parser
-		: public parser_impl<e_string_special_symbols, e_string_read_state, e_string_read_state::outside>
+		: public parser_impl<e_string_special_symbols, e_string_read_state, e_string_read_state::initial>
 	{
 	public:
 		using symbol_t = e_string_special_symbols;
@@ -69,11 +97,11 @@ namespace json
 	protected:
 		virtual const StateTable_t& table() override { return m_state_table; }
 
-		result on_outside(const char&c, const int pos);
+		result on_initial(const char&c, const int pos);
 		result on_inside(const char&c, const int pos);
 		result on_escape(const char&c, const int pos);
 		result on_unicode(const char&c, const int pos);
-		result on_failure(const char&c, const int pos);
+		result on_done(const char&c, const int pos);
 
 		virtual symbol_t token_type_of(const char& c) const override;
 

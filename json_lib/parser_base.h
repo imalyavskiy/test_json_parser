@@ -45,7 +45,7 @@ namespace json
 	class state
 	{
 	private:
-		STATE m_state = initial_state;
+		STATE m_state;
 
 	protected:
 		state() { set(initial_state); };
@@ -71,14 +71,21 @@ namespace json
 
 			if (nullptr == m_current_processing_func)
 			{
-				auto transition_group = table().at(state::get());
+				const StateType s = state::get();
+				auto transition_group = table().at(s);
 				if (transition_group.end() != transition_group.find(symbol))
 				{
 					auto transition = transition_group.at(symbol);
 					assert(transition.second);
 					result res = transition.second(c, pos);
 					if (res > result::e_fatal)
+					{
+						const bool state_chages = s != transition.first;
+#ifdef _DEBUG
+						putchar(c);
+#endif
 						state::set(transition.first);
+					}
 
 					return res;
 				}

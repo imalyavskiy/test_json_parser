@@ -36,9 +36,6 @@
     <ClCompile Include="parser_null.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="parser_true.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="json_lib.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
