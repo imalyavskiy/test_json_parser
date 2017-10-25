@@ -1,5 +1,9 @@
 #ifndef __JSON_LIB_H__
 #define __JSON_LIB_H__
+
+#define json_failed(_x_) (int)_x_ < 0
+#define json_succeded(_x_) (int)_x_ >= 0
+
 namespace json
 {
 	enum class result
@@ -28,5 +32,6 @@ namespace json
 	parser::ptr create_string_parser();
 	parser::ptr create_null_parser();
 	parser::ptr create_bool_parser();
+	parser::ptr create_value_parser();
 }
 #endif // __JSON_LIB_H__

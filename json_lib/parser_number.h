@@ -48,7 +48,7 @@ namespace json
 			case e_number_read_state::exponent_sign:	str = "exponent_sign";			break;
 			case e_number_read_state::exponent_val:		str = "exponent_val";			break;
 			case e_number_read_state::done:				str = "done";					break;
-			default:									str = "unknown", assert(0);		break;
+			default:									str = "unknown";				break;
 			}
 
 			return str;

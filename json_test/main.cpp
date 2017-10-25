@@ -28,7 +28,7 @@ json::result
 process(/*const */std::istream& input)
 {
 	char c = 0;
-	json::parser::ptr p = json::create_string_parser();
+	json::parser::ptr p = json::create_array_parser();
 	if (!p)
 		return result::e_fatal;
 

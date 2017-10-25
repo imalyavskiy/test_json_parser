@@ -47,7 +47,7 @@ namespace json
 			case e_bool_read_state::got_l:		str = "got_l";					break;
 			case e_bool_read_state::got_s:		str = "got_s";					break;
 			case e_bool_read_state::done:		str = "done";					break;
-			default:							str = "unknown", assert(0);		break;
+			default:							str = "unknown";				break;
 			}
 
 			return str;
