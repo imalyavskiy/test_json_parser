@@ -1,6 +1,6 @@
 #pragma once
-#ifndef __PARSER_JSON_H__
-#define __PARSER_JSON_H__
+#ifndef __PARSER_OBJECT_H__
+#define __PARSER_OBJECT_H__
 
 namespace json
 {
@@ -74,4 +74,4 @@ namespace json
 	};
 } 
 
-#endif // __PARSER_JSON_H__
+#endif // __PARSER_OBJECT_H__

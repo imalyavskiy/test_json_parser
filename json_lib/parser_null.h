@@ -48,8 +48,8 @@ namespace json
 	class null_parser
 		: public parser_impl<e_null_events, e_null_states, e_null_states::initial>
 	{
-		using event_t		= e_null_events;
-		using state_t		= e_null_states;
+		using event_t				= e_null_events;
+		using state_t				= e_null_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 	public:
 		null_parser();

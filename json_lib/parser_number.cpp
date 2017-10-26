@@ -61,34 +61,6 @@ result
 number_parser::step(const char& c, const int pos)
 {
 	return parser_impl::step(c, pos);
-// 	if (state_t::done == state::get())
-// 		return result::e_fatal; // reset requred
-// 
-// 	result res = parser_impl::step(c, pos);
-// 	
-// 	if(result::e_unexpected == res)
-// 	{
-// 		switch (state::get())
-// 		{
-// 		case state_t::integer:
-// 		case state_t::fractional:
-// 			res = result::s_done_rpt;
-// 			state::set(state_t::done);
-// 			break;
-// 		case state_t::exponent_val:
-// 		case state_t::initial:
-// 		case state_t::exponent_delim:
-// 		case state_t::exponent_sign:
-// 		case state_t::leading_minus:
-// 		case state_t::zero:
-// 		case state_t::dot:
-// 		default:
-// 			res = result::e_unexpected;
-// 			break;
-// 		}
-// 	}
-// 
-// 	return res;
 }
 
 result
@@ -197,15 +169,15 @@ number_parser::on_fail(const unsigned char& c, const int pos)
 number_parser::event_t
 number_parser::to_event(const char& c) const
 {
-	if ((char)event_t::minus == c)
+	if (0x2D == c)
 		return event_t::minus;
-	if ((char)event_t::plus == c)
+	if (0x2B == c)
 		return event_t::plus;
-	if ((char)event_t::dec_zero == c)
+	if (0x30 == c)
 		return event_t::dec_zero;
-	if ((char)event_t::dot == c)
+	if (0x2E == c)
 		return event_t::dot;
-	if ((char)0x45 == c || (char)0x65 == c)
+	if (0x45 == c || 0x65 == c)
 		return event_t::exponent;
 	if (0x31 <= c && c <= 0x39)
 		return event_t::dec_digit;
@@ -218,28 +190,24 @@ number_parser::reset()
 {
 	state::set(state_t::initial);
 	
-	m_positive = true;
-	m_integer = 0;
-	m_fractional = 0;
-	m_has_exponent = false;
+	m_positive			= true;
+	m_integer			= 0;
+	m_fractional		= 0;
+	m_has_exponent		= false;
 	m_exponent_positive = true;
-	m_exponent_value = 0;
+	m_exponent_value	= 0;
 }
 
 result 
 number_parser::append_digit(int& val, const unsigned char& c)
 {
 	if (c < 0x30 || 0x39 < c)
-	{
-		assert(0);
 		return result::e_fatal;
-	}
 
 	val *= 10;
 
 	switch (c)
 	{
-	case 0x30: break;
 	case 0x31: val += 1; break;
 	case 0x32: val += 2; break;
 	case 0x33: val += 3; break;

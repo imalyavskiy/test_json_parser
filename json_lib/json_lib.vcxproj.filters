@@ -27,9 +27,6 @@
     <ClCompile Include="parser_string.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="parser_base.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="parser_object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

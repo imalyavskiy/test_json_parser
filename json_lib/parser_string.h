@@ -83,8 +83,8 @@ namespace json
 		: public parser_impl<e_string_events, e_string_states, e_string_states::initial>
 	{
 	public:
-		using event_t		= e_string_events;
-		using state_t		= e_string_states;
+		using event_t				= e_string_events;
+		using state_t				= e_string_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 
 		string_parser();

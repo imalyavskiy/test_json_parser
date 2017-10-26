@@ -62,8 +62,8 @@ namespace json
 	class number_parser
 		: public parser_impl<e_number_events, e_number_states, e_number_states::initial>
 	{
-		using event_t		= e_number_events;
-		using state_t		= e_number_states;
+		using event_t				= e_number_events;
+		using state_t				= e_number_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 	public:
 		number_parser();

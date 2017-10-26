@@ -5,13 +5,13 @@ using namespace json;
 value_parser::value_parser()
 	: m_event_2_state_table
 	{
-		{ state_t::initial,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)		} },
+		{ state_t::initial,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)	} },
 		} },
-		{ state_t::read,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)		} },
+		{ state_t::read,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)	} },
 		} },
-		{ state_t::done,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)		} },
+		{ state_t::done,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
 		} },
-		{ state_t::failure,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)		} },
+		{ state_t::failure,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
 		} },
 	}
 {
@@ -52,6 +52,7 @@ value_parser::on_data(const unsigned char& c, const int pos)
 		if (true == p.first)
 		{
 			result local_res = p.second->step(c, pos);
+
 			if (json_failed(local_res))
 				p.first = false;
 			else if (json_succeded(local_res) && (json_failed(res) || local_res < res))

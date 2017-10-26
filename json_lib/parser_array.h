@@ -48,8 +48,8 @@ namespace json
 	class array_parser
 		: public parser_impl<e_array_events, e_array_states, e_array_states::initial>
 	{
-		using event_t		= e_array_events;
-		using state_t		= e_array_states;
+		using event_t				= e_array_events;
+		using state_t				= e_array_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 	public:
 		array_parser();

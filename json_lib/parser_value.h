@@ -41,10 +41,10 @@ namespace json
 	class value_parser
 		: public parser_impl<e_value_events, e_value_states, e_value_states::initial>
 	{
-		using event_t		= e_value_events;
-		using state_t		= e_value_states;
+		using event_t				= e_value_events;
+		using state_t				= e_value_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
-		using ParserItem_t	= std::pair<bool, parser::ptr>;
+		using ParserItem_t			= std::pair<bool, parser::ptr>;
 	public:
 		value_parser();
 		~value_parser();

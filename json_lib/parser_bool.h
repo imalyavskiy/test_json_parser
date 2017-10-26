@@ -61,8 +61,8 @@ namespace json
 	class bool_parser
 		: public parser_impl<e_bool_events, e_bool_states, e_bool_states::initial>
 	{
-		using event_t		= e_bool_events;
-		using state_t		= e_bool_states;
+		using event_t				= e_bool_events;
+		using state_t				= e_bool_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 	public:
 		bool_parser();
