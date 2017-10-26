@@ -17,57 +17,53 @@ namespace json
 	};
 
 #pragma region -- state machine types --
-	using processig_func = std::function<result(const char&, const int)>;
+	using state_change_handler_t = std::function<result(const char&, const int)>;
 
-	// tt_pair: state, function
-	template <typename _READSTATE, typename _STATE_CHANGE_HANDLER>
-	using TTransition = std::pair<_READSTATE, _STATE_CHANGE_HANDLER>;
+	template <typename READSTATE, typename _STATE_CHANGE_HANDLER>
+	using TTransition = std::pair<READSTATE, _STATE_CHANGE_HANDLER>;
 
-	template<typename STATE, typename PROC_FUNC>
-	using Transition = TTransition<STATE, PROC_FUNC>;
+	template<typename STATE, typename STATE_CHANGE_HANDLER>
+	using Transition = TTransition<STATE, STATE_CHANGE_HANDLER>;
 
-	// transitions map
-	template <typename _SYMBOL, typename _TRANSITION>
-	using TTransitionTable = std::map<typename _SYMBOL, typename _TRANSITION>; // symbol->state
+	template <typename EVENT, typename _TRANSITION>
+	using TTransitionTable = std::map<typename EVENT, typename _TRANSITION>;
 
-	template<typename STATE, typename SPECIAL, typename PROC_FUNC>
-	using TransitionTable = TTransitionTable<SPECIAL, Transition<STATE, PROC_FUNC>>;
+	template<typename STATE, typename EVENT, typename STATE_CHANGE_HANDLER>
+	using TransitionTable = TTransitionTable<EVENT, Transition<STATE, STATE_CHANGE_HANDLER>>;
 
-	// map of states and transitions possible to certain state
-	template <typename _READSTATE, typename _TRANSITION_TABLE = TransitionTable>
-	using TStateTable = std::map<_READSTATE, _TRANSITION_TABLE>; // state->new_state(symbol)
+	template <typename READSTATE, typename TRANSITION_TABLE = TransitionTable>
+	using TStateTable = std::map<READSTATE, TRANSITION_TABLE>;
 
-	template<typename STATE, typename SPECIAL_SYMBOLS, typename PROC_FUNC = processig_func>
-	using StateTable = TStateTable<STATE, TransitionTable<STATE, SPECIAL_SYMBOLS, PROC_FUNC>>;
+	template<typename STATE, typename EVENT, typename STATE_CHANGE_HANDLER = state_change_handler_t>
+	using StateTable = TStateTable<STATE, TransitionTable<STATE, EVENT, STATE_CHANGE_HANDLER>>;
 #pragma endregion
 
 	template<typename STATE, STATE initial_state>
 	class state
 	{
 	private:
-		STATE m_state;
+		STATE m_state = initial_state;
 
 	protected:
-		state() { set(initial_state); };
 		STATE get() const { return m_state; };
 		void set(STATE new_state) { m_state = new_state; }
 	};
 
-	template<typename SymbolsType, typename StateType, StateType initial_state>
+	template<typename EventsType, typename StateType, StateType initial_state>
 	class parser_impl
 		: protected state<StateType, initial_state>
 		, public parser
 	{
 	public:
-		using symbol_t = SymbolsType;
-		using StateTable_t = StateTable<StateType, SymbolsType>;
+		using event_t		= EventsType;
+		using StateTable_t	= StateTable<StateType, EventsType>;
 
 		parser_impl() {};
 
 		// The step of the automata
 		virtual result step(const char& c, const int pos) override
 		{
-			symbol_t symbol = token_type_of(c);
+			event_t symbol = to_event(c);
 
 			if (nullptr == m_current_processing_func)
 			{
@@ -78,14 +74,7 @@ namespace json
 					auto transition = transition_group.at(symbol);
 					assert(transition.second);
 					result res = transition.second(c, pos);
-					if (res > result::e_fatal)
-					{
-						const bool state_chages = s != transition.first;
-#ifdef _DEBUG
-						putchar(c);
-#endif
-						state::set(transition.first);
-					}
+					state::set(transition.first);
 
 					return res;
 				}
@@ -98,11 +87,11 @@ namespace json
 
 
 	protected:
-		virtual symbol_t token_type_of(const char& c) const = 0;
+		virtual event_t to_event(const char& c) const = 0;
 		virtual const StateTable_t& table() = 0;
 
 	protected:
-		processig_func m_current_processing_func;
+		state_change_handler_t m_current_processing_func;
 	};
 }
 #endif // __PARSER_BASE_H__

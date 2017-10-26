@@ -68,9 +68,6 @@
     <ClInclude Include="parser_null.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="parser_true.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="parsers.h">
       <Filter>Header Files</Filter>
     </ClInclude>

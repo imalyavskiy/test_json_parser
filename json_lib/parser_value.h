@@ -3,71 +3,69 @@
 #define __PARSER_VALUE_H__
 namespace json
 {
-	enum class e_value_read_state
+	enum class e_value_states
 	{
 		initial,
 		read,
 		done,
+		failure,
 	};
 
-	enum class e_value_special_symbols
+	enum class e_value_events
 	{
 		other = 0xffff,
 	};
 
+#ifdef _DEBUG
 	template<>
-	void state<e_value_read_state, e_value_read_state::initial>::set(e_value_read_state new_state)
+	void state<e_value_states, e_value_states::initial>::set(e_value_states new_state)
 	{
-		auto state_2_string = [](e_value_read_state s)->std::string
+		auto state_2_string = [](e_value_states s)->std::string
 		{
-			std::string str;
-
 			switch (s)
 			{
-			case e_value_read_state::initial:	str = "initial";				break;
-			case e_value_read_state::read:		str = "read";					break;
-			case e_value_read_state::done:		str = "done";					break;
-			default:							str = "unknown", assert(0);		break;
+			case e_value_states::initial:	return std::string("initial");
+			case e_value_states::read:		return std::string("read");
+			case e_value_states::done:		return std::string("done");
+			case e_value_states::failure:	return std::string("failure");
 			}
-
-			return str;
+			
+			return std::string("unknown");
 		};
 
-		if (m_state == new_state)
-			return;
-
-#ifdef _DEBUG
-		std::cout << "value parser: " << state_2_string(m_state) << " -> " << state_2_string(new_state) << ":\t";
-#endif // _DEBUG
+		std::cout << "value parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
 		m_state = new_state;
 	}
+#endif // _DEBUG
 
 	class value_parser
-		: public parser_impl<e_value_special_symbols, e_value_read_state, e_value_read_state::initial>
+		: public parser_impl<e_value_events, e_value_states, e_value_states::initial>
 	{
-		using symbol_t		= e_value_special_symbols;
-		using read_state_t	= e_value_read_state;
-		using StateTable_t	= StateTable<read_state_t, symbol_t>;
+		using event_t		= e_value_events;
+		using state_t		= e_value_states;
+		using EventToStateTable_t	= StateTable<state_t, event_t>;
+		using ParserItem_t	= std::pair<bool, parser::ptr>;
 	public:
 		value_parser();
 		~value_parser();
 
 	protected:
-		virtual const StateTable_t& table() override { return m_state_table; }
+		virtual result step(const char& c, const int pos) final;
+
+		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
 		result on_data(const unsigned char& c, const int pos);
 		result on_done(const unsigned char& c, const int pos);
+		result on_fail(const unsigned char& c, const int pos);
 
-		virtual symbol_t token_type_of(const char& c) const override
-		{
-			return symbol_t::other;
-		}
+		virtual event_t to_event(const char& c) const override;
 
 		virtual void reset() final;
 
 	protected:
-		const StateTable_t m_state_table;
-		std::list<std::pair<bool, parser::ptr>> parsing_unit;
+		const EventToStateTable_t m_event_2_state_table;
+		
+		std::list<ParserItem_t> parsing_unit;
 	};
 }
 #endif // __PARSER_VALUE_H__

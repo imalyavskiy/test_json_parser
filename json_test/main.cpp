@@ -24,6 +24,18 @@ bool read_cmd_line(int argc, char** argv, std::string& source_file)
 	return true;
 }
 
+void print_symbol(const unsigned char& c)
+{
+	std::cout << "0x" << std::hex << std::setw(2) << std::setfill('0') << (int)c << std::resetiosflags(std::ios_base::basefield);
+	
+	if (c <= 0x1F)
+		std::cout << "    ";
+	else
+		std::cout << " \'" << c << "\'";
+	
+	std::cout << std::endl;
+}
+
 json::result
 process(/*const */std::istream& input)
 {
@@ -34,14 +46,14 @@ process(/*const */std::istream& input)
 
 	while (input >> std::noskipws >> c)
 	{
+		print_symbol(c);
+
 		if (json::result::s_ok > p->step(c, (int)input.tellg() - 1))
 		{
 			std::cout << "Error while parsing: reason \'" << c << "\'" << std::endl;
 			break;
 		}
 	}
-
-	std::cout << std::endl;
 
 	return json::result::s_ok;
 }

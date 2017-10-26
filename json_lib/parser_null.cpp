@@ -3,24 +3,38 @@
 using namespace json;
 
 null_parser::null_parser()
-	: m_state_table
+	: m_event_2_state_table
 	{
-		{ read_state_t::initial,	{	{ symbol_t::letter_n,				{ read_state_t::got_n,	BIND(null_parser::on_n)		} },
+		{ state_t::initial,		{	{ event_t::letter_n,				{ state_t::got_n,	BIND(null_parser::on_n)		} },
+									{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
 		} },
-		{ read_state_t::got_n,		{	{ symbol_t::letter_u,				{ read_state_t::got_u,	BIND(null_parser::on_u)		} },
+		{ state_t::got_n,		{	{ event_t::letter_u,				{ state_t::got_u,	BIND(null_parser::on_u)		} },
+									{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
 		} },
-		{ read_state_t::got_u,		{	{ symbol_t::letter_l,				{ read_state_t::got_l,	BIND(null_parser::on_l)		} },
+		{ state_t::got_u,		{	{ event_t::letter_l,				{ state_t::got_l,	BIND(null_parser::on_l)		} },
+									{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
 		} },
-		{ read_state_t::got_l,		{	{ symbol_t::letter_l,				{ read_state_t::done,	BIND(null_parser::on_done)	} },
+		{ state_t::got_l,		{	{ event_t::letter_l,				{ state_t::done,	BIND(null_parser::on_done)	} },
+									{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
+		} },
+		{ state_t::done,		{	{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
+		} },
+		{ state_t::failure,		{	{ event_t::other,					{ state_t::failure,	BIND(null_parser::on_fail)	} },
 		} },
 	}
 {
-	reset();
 }
 
 null_parser::~null_parser()
 {
 }
+
+result
+null_parser::step(const char& c, const int pos)
+{
+	return parser_impl::step(c, pos);
+}
+
 
 result 
 null_parser::on_n(const unsigned char& c, const int pos)
@@ -46,8 +60,30 @@ null_parser::on_done(const unsigned char& c, const int pos)
 	return result::s_done;
 }
 
+result 
+null_parser::on_fail(const unsigned char& c, const int pos)
+{
+	return result::e_unexpected;
+}
+
 void 
 null_parser::reset()
 {
-	state::set(read_state_t::initial);
+	state::set(state_t::initial);
+}
+
+null_parser::event_t
+null_parser::to_event(const char& c) const
+{
+	switch (c)
+	{
+	case 0x6e:
+		return event_t::letter_n;
+	case 0x75:
+		return event_t::letter_u;
+	case 0x6c:
+		return event_t::letter_l;
+	}
+
+	return event_t::other;
 }

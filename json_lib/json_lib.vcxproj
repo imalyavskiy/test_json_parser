@@ -164,7 +164,6 @@
     <ClInclude Include="parser_number.h" />
     <ClInclude Include="parser_object.h" />
     <ClInclude Include="parser_string.h" />
-    <ClInclude Include="parser_true.h" />
     <ClInclude Include="parser_value.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
