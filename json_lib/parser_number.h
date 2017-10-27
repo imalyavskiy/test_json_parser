@@ -27,7 +27,7 @@ namespace json
 		dec_digit,			// 0x31 - 0x39
 		dot = 0x2E,			// .
 		exponent = 0x45,	// E or 0x65 - e
-		other,
+		symbol,
 	};
 
 #ifdef _DEBUG
@@ -70,27 +70,28 @@ namespace json
 		~number_parser();
 
 	protected:
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result on_initial(const unsigned char& c, const int pos);
-		result on_minus(const unsigned char& c, const int pos);
-		result on_integer(const unsigned char& c, const int pos);
-		result on_fractional(const unsigned char& c, const int pos);
-		result on_exponent(const unsigned char& c, const int pos);
-		result on_exponent_sign(const unsigned char& c, const int pos);
-		result on_exponent_value(const unsigned char& c, const int pos);
-		result on_zero(const unsigned char& c, const int pos);
-		result on_dot(const unsigned char& c, const int pos);
-		result on_done(const unsigned char& c, const int pos);
-		result on_fail(const unsigned char& c, const int pos);
+		result_t on_initial(const unsigned char& c, const int pos);
+		result_t on_minus(const unsigned char& c, const int pos);
+		result_t on_integer(const unsigned char& c, const int pos);
+		result_t on_fractional(const unsigned char& c, const int pos);
+		result_t on_exponent(const unsigned char& c, const int pos);
+		result_t on_exponent_sign(const unsigned char& c, const int pos);
+		result_t on_exponent_value(const unsigned char& c, const int pos);
+		result_t on_zero(const unsigned char& c, const int pos);
+		result_t on_dot(const unsigned char& c, const int pos);
+		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_fail(const unsigned char& c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
 		virtual void reset() final;
 
-		static result append_digit(int& val, const unsigned char& c);
+		static result_t append_digit(int& val, const unsigned char& c);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;

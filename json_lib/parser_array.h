@@ -15,7 +15,7 @@ namespace json
 	enum class e_array_events
 	{
 		// ascii part
-		other					= 0xffff,
+		symbol					= 0xffff,
 		left_square_bracket		= 0x005B,
 		right_square_bracket	= 0x005D,
 		comma					= 0x00,
@@ -57,17 +57,18 @@ namespace json
 
 	protected:
 
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 		
-		result on_before_value(const unsigned char& c, const int pos);
-		result on_after_value(const unsigned& c, const int pos);
-		result on_value(const unsigned& c, const int pos);
-		result on_done(const unsigned char& c, const int pos);
-		result on_fail(const unsigned char& c, const int pos);
+		result_t on_before_value(const unsigned char& c, const int pos);
+		result_t on_after_value(const unsigned& c, const int pos);
+		result_t on_value(const unsigned& c, const int pos);
+		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_fail(const unsigned char& c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& r) const override;
 
 		virtual void reset() final;
 

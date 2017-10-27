@@ -2,7 +2,7 @@
 //
 #include "../json_lib/json_lib.h"
 
-typedef json::result result;
+typedef json::result_t result_t;
 
 bool read_cmd_line(int argc, char** argv, std::string& source_file)
 {
@@ -36,29 +36,33 @@ void print_symbol(const unsigned char& c)
 	std::cout << std::endl;
 }
 
-json::result
+json::result_t
 process(/*const */std::istream& input)
 {
 	char c = 0;
-	json::parser::ptr p = json::create_array_parser();
-	if (!p)
-		return result::e_fatal;
+	json::result_t result = json::result_t::s_ok;
 
-	while (input >> std::noskipws >> c)
+	json::parser::ptr p = json::create_object_parser();
+	if (!p)
+		return result_t::e_fatal;
+
+	while (input >> std::noskipws >> c || result != json::result_t::s_done)
 	{
 		print_symbol(c);
 
-		if (json::result::s_ok > p->step(c, (int)input.tellg() - 1))
+		result = p->putchar(c, (int)input.tellg() - 1);
+
+		if (json::result_t::s_ok > result)
 		{
 			std::cout << "Error while parsing: reason \'" << c << "\'" << std::endl;
 			break;
 		}
 	}
 
-	return json::result::s_ok;
+	return result;
 }
 
-json::result
+json::result_t
 process(const std::string& input)
 {
 	std::stringstream sstr;
@@ -68,7 +72,7 @@ process(const std::string& input)
 
 int main(int argc, char** argv)
 {
-	json::result res = json::result::s_ok;
+	json::result_t res = json::result_t::s_ok;
 
 	std::string source_file_name;
 	if (!read_cmd_line(argc, argv, source_file_name))

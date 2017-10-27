@@ -13,7 +13,7 @@ namespace json
 
 	enum class e_value_events
 	{
-		other = 0xffff,
+		symbol = 0xffff,
 	};
 
 #ifdef _DEBUG
@@ -50,15 +50,16 @@ namespace json
 		~value_parser();
 
 	protected:
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result on_data(const unsigned char& c, const int pos);
-		result on_done(const unsigned char& c, const int pos);
-		result on_fail(const unsigned char& c, const int pos);
+		result_t on_data(const unsigned char& c, const int pos);
+		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_fail(const unsigned char& c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
 		virtual void reset() final;
 

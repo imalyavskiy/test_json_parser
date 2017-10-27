@@ -5,13 +5,13 @@ using namespace json;
 value_parser::value_parser()
 	: m_event_2_state_table
 	{
-		{ state_t::initial,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)	} },
+		{ state_t::initial,		{	{ event_t::symbol,				{ state_t::read,	BIND(value_parser::on_data)	} },
 		} },
-		{ state_t::read,		{	{ event_t::other,				{ state_t::read,	BIND(value_parser::on_data)	} },
+		{ state_t::read,		{	{ event_t::symbol,				{ state_t::read,	BIND(value_parser::on_data)	} },
 		} },
-		{ state_t::done,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
+		{ state_t::done,		{	{ event_t::symbol,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
 		} },
-		{ state_t::failure,		{	{ event_t::other,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
+		{ state_t::failure,		{	{ event_t::symbol,				{ state_t::failure,	BIND(value_parser::on_fail)	} },
 		} },
 	}
 {
@@ -21,20 +21,22 @@ value_parser::~value_parser()
 {
 }
 
-result
-value_parser::step(const char& c, const int pos)
+result_t
+value_parser::putchar(const char& c, const int pos)
 {
-	result res = parser_impl::step(c, pos);
-	if (state::get() == state_t::read && (result::s_done == res || result::s_done_rpt == res))
+	result_t res = parser_impl::step(to_event(c), c, pos);
+	
+	if (state::get() == state_t::read && (result_t::s_done == res || result_t::s_done_rpt == res))
 		state::set(state_t::done); // forced state change
+
 	return res;
 }
 
 
-result 
+result_t 
 value_parser::on_data(const unsigned char& c, const int pos)
 {
-	result res = result::e_fatal;
+	result_t res = result_t::e_fatal;
 	uint8_t parsers_in_work = 0;
 
 	if (parsing_unit.empty())
@@ -51,7 +53,7 @@ value_parser::on_data(const unsigned char& c, const int pos)
 	{
 		if (true == p.first)
 		{
-			result local_res = p.second->step(c, pos);
+			result_t local_res = p.second->putchar(c, pos);
 
 			if (json_failed(local_res))
 				p.first = false;
@@ -61,21 +63,21 @@ value_parser::on_data(const unsigned char& c, const int pos)
 	}
 
 	if (0 == parsers_in_work)
-		res = result::e_unexpected;
+		res = result_t::e_unexpected;
 
 	return res;
 }
 
-result 
+result_t 
 value_parser::on_done(const unsigned char& c, const int pos)
 {
-	return result::s_done;
+	return result_t::s_done;
 }
 
-result 
+result_t 
 value_parser::on_fail(const unsigned char& c, const int pos)
 {
-	return result::e_unexpected;
+	return result_t::e_unexpected;
 }
 
 void 
@@ -91,5 +93,12 @@ value_parser::reset()
 value_parser::event_t 
 value_parser::to_event(const char& c) const
 {
-	return event_t::other;
+	return event_t::symbol;
 }
+
+value_parser::event_t
+value_parser::to_event(const result_t& c) const
+{
+	return event_t::symbol;
+}
+

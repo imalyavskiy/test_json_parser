@@ -6,7 +6,7 @@
 
 namespace json
 {
-	enum class result
+	enum class result_t
 	{
 		s_need_more = 3,	// need more data
 		s_done_rpt = 2,		// symbol succesfully terminates parsing but makes no sense to current parser, put it once again to above parser
@@ -22,8 +22,8 @@ namespace json
 
 		virtual ~parser() {};
 		
-		virtual void	reset() = 0;
-		virtual result	step(const char& c, const int pos) = 0;
+		virtual void		reset() = 0;
+		virtual result_t	putchar(const char& c, const int pos) = 0;
 	};
 
 	parser::ptr create_object_parser();

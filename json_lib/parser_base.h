@@ -6,7 +6,7 @@
 namespace json
 {
 #pragma region -- state machine types --
-	using state_change_handler_t = std::function<result(const char&, const int)>;
+	using state_change_handler_t = std::function<result_t(const char&, const int)>;
 
 	template <typename READSTATE, typename _STATE_CHANGE_HANDLER>
 	using TTransition = std::pair<READSTATE, _STATE_CHANGE_HANDLER>;
@@ -50,28 +50,27 @@ namespace json
 		parser_impl() {};
 
 		// The step of the automata
-		virtual result step(const char& c, const int pos) override
+		result_t step(const event_t& e, const char& c, const int pos)
 		{
-			const event_t e = to_event(c);
-
 			auto transition_group = table().at(state::get());
 			if (transition_group.end() != transition_group.find(e))
 			{
 				auto transition = transition_group.at(e);
 				assert(transition.second);
-				result res = transition.second(c, pos);
+				result_t res = transition.second(c, pos);
 					
 				state::set(transition.first);
 
 				return res;
 			}
 
-			return result::e_unexpected;
+			return result_t::e_unexpected;
 		}
-
 
 	protected:
 		virtual event_t to_event(const char& c) const = 0;
+		virtual event_t to_event(const result_t& c) const = 0;
+
 		virtual const StateTable_t& table() = 0;
 	};
 }

@@ -56,17 +56,18 @@ namespace json
 		~null_parser();
 
 	protected:
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result on_n(const unsigned char& c, const int pos);
-		result on_u(const unsigned char& c, const int pos);
-		result on_l(const unsigned char& c, const int pos);
-		result on_done(const unsigned char& c, const int pos);
-		result on_fail(const unsigned char& c, const int pos);
+		result_t on_n(const unsigned char& c, const int pos);
+		result_t on_u(const unsigned char& c, const int pos);
+		result_t on_l(const unsigned char& c, const int pos);
+		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_fail(const unsigned char& c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
 		virtual void reset() final;
 

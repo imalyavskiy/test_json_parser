@@ -27,7 +27,7 @@ namespace json
 		letter_s = 0x73,	// s
 		letter_t = 0x74,	// t
 		letter_u = 0x75,	// u
-		other = 0xff,
+		symbol = 0xff,
 	};
 
 #ifdef _DEBUG
@@ -69,21 +69,22 @@ namespace json
 		~bool_parser();
 
 	protected:
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result on_t(const unsigned char& c, const int pos);
-		result on_r(const unsigned char& c, const int pos);
-		result on_u(const unsigned char& c, const int pos);
-		result on_f(const unsigned char& c, const int pos);
-		result on_a(const unsigned char& c, const int pos);
-		result on_l(const unsigned char& c, const int pos);
-		result on_s(const unsigned char& c, const int pos);
-		result on_done(const unsigned char& c, const int pos);
-		result on_fail(const unsigned char& c, const int pos);
+		result_t on_t(const unsigned char& c, const int pos);
+		result_t on_r(const unsigned char& c, const int pos);
+		result_t on_u(const unsigned char& c, const int pos);
+		result_t on_f(const unsigned char& c, const int pos);
+		result_t on_a(const unsigned char& c, const int pos);
+		result_t on_l(const unsigned char& c, const int pos);
+		result_t on_s(const unsigned char& c, const int pos);
+		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_fail(const unsigned char& c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
 		virtual void reset() final;
 

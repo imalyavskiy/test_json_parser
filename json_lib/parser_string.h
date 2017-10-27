@@ -22,7 +22,7 @@ namespace json
 	enum class e_string_events
 	{
 		// ascii part
-		other			= 0xffff,
+		symbol			= 0xffff,
 		hex_digit		= 0xfffe,
 		// ...
 		quote			= 0x22,
@@ -91,18 +91,19 @@ namespace json
 		~string_parser();
 
 	protected:
-		virtual result step(const char& c, const int pos) final;
+		virtual result_t putchar(const char& c, const int pos) final;
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result on_initial(const char&c, const int pos);
-		result on_inside(const char&c, const int pos);
-		result on_escape(const char&c, const int pos);
-		result on_unicode(const char&c, const int pos);
-		result on_done(const char&c, const int pos);
-		result on_fail(const char&c, const int pos);
+		result_t on_initial(const char&c, const int pos);
+		result_t on_inside(const char&c, const int pos);
+		result_t on_escape(const char&c, const int pos);
+		result_t on_unicode(const char&c, const int pos);
+		result_t on_done(const char&c, const int pos);
+		result_t on_fail(const char&c, const int pos);
 
 		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
 		virtual void reset() final;
 

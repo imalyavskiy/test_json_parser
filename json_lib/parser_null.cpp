@@ -29,41 +29,41 @@ null_parser::~null_parser()
 {
 }
 
-result
-null_parser::step(const char& c, const int pos)
+result_t
+null_parser::putchar(const char& c, const int pos)
 {
-	return parser_impl::step(c, pos);
+	return parser_impl::step(to_event(c), c, pos);
 }
 
 
-result 
+result_t 
 null_parser::on_n(const unsigned char& c, const int pos)
 {
-	return result::s_need_more;
+	return result_t::s_need_more;
 }
 
-result 
+result_t 
 null_parser::on_u(const unsigned char& c, const int pos)
 {
-	return result::s_need_more;
+	return result_t::s_need_more;
 }
 
-result 
+result_t 
 null_parser::on_l(const unsigned char& c, const int pos)
 {
-	return result::s_need_more;
+	return result_t::s_need_more;
 }
 
-result 
+result_t 
 null_parser::on_done(const unsigned char& c, const int pos)
 {
-	return result::s_done;
+	return result_t::s_done;
 }
 
-result 
+result_t 
 null_parser::on_fail(const unsigned char& c, const int pos)
 {
-	return result::e_unexpected;
+	return result_t::e_unexpected;
 }
 
 void 
@@ -85,5 +85,11 @@ null_parser::to_event(const char& c) const
 		return event_t::letter_l;
 	}
 
+	return event_t::other;
+}
+
+null_parser::event_t
+null_parser::to_event(const result_t& c) const
+{
 	return event_t::other;
 }

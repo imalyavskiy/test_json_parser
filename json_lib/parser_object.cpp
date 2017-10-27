@@ -3,17 +3,40 @@
 using namespace json;
 
 object_parser::object_parser()
-	: m_event_2_state_table
+	: m_key_parser(create_string_parser())
+	, m_val_parser(create_value_parser())
+	, m_event_2_state_table
 	{
-		{ e_object_states::initial,		{		{ e_object_events::left_curly_brace,		{ e_object_states::before_key,	BIND(object_parser::on_before_val)	} },
-												{ e_object_events::other,					{ e_object_states::failure,		BIND(object_parser::on_fail)		} },
+		{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	BIND(object_parser::on_more) } },
+									{ event_t::symbol,		{ state_t::failure,		BIND(object_parser::on_fail) } },
 		} },
-		{ e_object_states::before_key,	{		{ e_object_events::right_curly_brace,		{ e_object_states::done,		BIND(object_parser::on_done)		} },
-												{ e_object_events::other,					{ e_object_states::failure,		BIND(object_parser::on_fail)		} },
+		{ state_t::key_before,	{	{ event_t::obj_end,		{ state_t::done,		BIND(object_parser::on_done) } },
+									{ event_t::key_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
+									{ event_t::symbol,		{ state_t::key_inside,	BIND(object_parser::on_key ) } },
+									{ event_t::skip,		{ state_t::key_before,	BIND(object_parser::on_more) } },
 		} },
-		{ e_object_states::done,		{		{ e_object_events::other,					{ e_object_states::failure,		BIND(object_parser::on_fail)		} },
+		{ state_t::key_inside,	{	{ event_t::key_done,	{ state_t::key_after,	BIND(object_parser::on_more) } },
+									{ event_t::key_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
+									{ event_t::symbol,		{ state_t::key_inside,	BIND(object_parser::on_key ) } },
 		} },
-		{ e_object_states::failure,		{		{ e_object_events::other,					{ e_object_states::failure,		BIND(object_parser::on_fail)		} },
+		{ state_t::key_after,	{	{ event_t::colon,		{ state_t::val_before,	BIND(object_parser::on_more) } },
+									{ event_t::skip,		{ state_t::key_after,	BIND(object_parser::on_more) } },
+		} },
+		{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	BIND(object_parser::on_val ) } },
+									{ event_t::val_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
+									{ event_t::skip,		{ state_t::val_before,	BIND(object_parser::on_more) } },
+		} },
+		{ state_t::val_inside,	{	{ event_t::val_done,	{ state_t::val_after,	BIND(object_parser::on_more) } },
+									{ event_t::val_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
+									{ event_t::symbol,		{ state_t::val_inside,	BIND(object_parser::on_val ) } },
+		} },
+		{ state_t::val_after,	{	{ event_t::comma,		{ state_t::key_before,	BIND(object_parser::on_new ) } },
+									{ event_t::obj_end,		{ state_t::done,		BIND(object_parser::on_done) } },
+									{ event_t::skip,		{ state_t::val_after,	BIND(object_parser::on_more) } },
+		} },
+		{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		BIND(object_parser::on_fail) } },
+		} },
+		{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		BIND(object_parser::on_fail) } },
 		} },
 	}
 {
@@ -27,48 +50,134 @@ object_parser::~object_parser()
 object_parser::event_t
 object_parser::to_event(const char& c) const
 {
-	if (0x7B == c)		// {
-		return event_t::left_curly_brace;
-	if (0x7D == c)		// }
-		return event_t::right_curly_brace;
+	switch(state::get())
+	{
+		case state_t::initial:
+			if (0x7B == c)		// {
+				return event_t::obj_begin;
+			break;
+		case state_t::key_before:
+			if (0x7D == c)		// }
+				return event_t::obj_end;
+			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+				return event_t::skip;
+			break;
+		case state_t::key_after:
+			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+				return event_t::skip;
+			if (0x3A == c)
+				return event_t::colon;
+			break;
+		case state_t::val_before:
+			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+				return event_t::skip;
+			break;
+		case state_t::val_after:
+			if (0x7D == c)		// }
+				return event_t::obj_end;
+			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+				return event_t::skip;
+			if (0x2c == c)
+				return event_t::comma;
+			break;
+	}
 
-	return event_t::other;
+	return event_t::symbol;
 };
 
-result
-object_parser::step(const char& c, const int pos)
+object_parser::event_t
+object_parser::to_event(const result_t& r) const
 {
-	return parser_impl::step(c, pos);
+	switch (state::get())
+	{
+	case state_t::key_inside:
+		if (result_t::s_done == r)
+			return event_t::key_done;
+		break;
+	case state_t::val_inside:
+		if (result_t::s_done == r || result_t::s_done_rpt == r)
+			return event_t::val_done;
+		break;
+	}
+
+	return event_t::nothing;
+};
+
+
+result_t
+object_parser::putchar(const char& c, const int pos)
+{
+	result_t r = parser_impl::step(to_event(c), c, pos);
+	
+	event_t e = to_event(r);
+
+	if (event_t::nothing == e)
+		return r;
+
+	if (event_t::val_done == e || event_t::key_done == e)
+	{
+		result_t new_r = parser_impl::step(e, c, pos);
+		r = result_t::s_need_more == new_r && result_t::s_done_rpt == r? 
+			parser_impl::step(to_event(c), c, pos) : 
+			new_r;
+	}
+	
+	return r;
 }
 
-result
+result_t
 object_parser::on_initial(const char& c, const int pos)
 {
-	return result::s_need_more;
+	return result_t::s_need_more;
 }
 
-result
-object_parser::on_before_val(const char& c, const int pos)
+result_t
+object_parser::on_more(const char& c, const int pos)
 {
-	return result::s_need_more;
+	return result_t::s_need_more;
 }
 
-result
+result_t 
+object_parser::on_new(const char& c, const int pos)
+{
+	reset();
+	return result_t::s_need_more;
+}
+
+result_t
+object_parser::on_key(const char& c, const int pos)
+{
+	return m_key_parser->putchar(c, pos);
+}
+
+result_t
+object_parser::on_val(const char& c, const int pos)
+{
+	return m_val_parser->putchar(c, pos);
+}
+
+result_t
 object_parser::on_done(const char& c, const int pos)
 {
-	return result::s_done;
+	reset();
+	return result_t::s_done;
 }
 
-result
+result_t
 object_parser::on_fail(const char& c, const int pos)
 {
-	return result::e_unexpected;
+	return result_t::e_unexpected;
 }
 
 void 
 object_parser::reset()
 {
 	std::cout << ">>> begin reset" << std::endl;
+	
 	state::set(state_t::initial);
+	
+	m_key_parser->reset();
+	m_val_parser->reset();
+	
 	std::cout << ">>> end reset" << std::endl;
 }
