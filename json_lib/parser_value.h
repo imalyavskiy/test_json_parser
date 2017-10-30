@@ -14,6 +14,8 @@ namespace json
 	enum class e_value_events
 	{
 		symbol = 0xffff,
+		val_done,
+		nothing,
 	};
 
 #ifdef _DEBUG

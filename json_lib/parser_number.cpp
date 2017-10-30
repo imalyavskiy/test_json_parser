@@ -5,49 +5,49 @@ using namespace json;
 number_parser::number_parser()
 	: m_event_2_state_table
 	{
-		{ state_t::initial,			{	{ event_t::minus,					{ state_t::leading_minus,	BIND(number_parser::on_minus)		} },
-										{ event_t::dec_zero,				{ state_t::zero,			BIND(number_parser::on_zero)		} },
-										{ event_t::dec_digit,				{ state_t::integer,			BIND(number_parser::on_integer)		} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::initial,			{	{ event_t::minus,		{ state_t::leading_minus,	BIND(number_parser::on_minus)		} },
+										{ event_t::dec_zero,	{ state_t::zero,			BIND(number_parser::on_zero)		} },
+										{ event_t::dec_digit,	{ state_t::integer,			BIND(number_parser::on_integer)		} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::leading_minus,	{	{ event_t::dec_zero,				{ state_t::zero,			BIND(number_parser::on_zero)		} },
-										{ event_t::dec_digit,				{ state_t::integer,			BIND(number_parser::on_integer)		} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::leading_minus,	{	{ event_t::dec_zero,	{ state_t::zero,			BIND(number_parser::on_zero)		} },
+										{ event_t::dec_digit,	{ state_t::integer,			BIND(number_parser::on_integer)		} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::zero,			{	{ event_t::dot,						{ state_t::dot,				BIND(number_parser::on_dot)			} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::zero,			{	{ event_t::dot,			{ state_t::dot,				BIND(number_parser::on_dot)			} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::dot,				{	{ event_t::dec_zero,				{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
-										{ event_t::dec_digit,				{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::dot,				{	{ event_t::dec_zero,	{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
+										{ event_t::dec_digit,	{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::integer,			{	{ event_t::dec_zero,				{ state_t::integer,			BIND(number_parser::on_integer)		} },
-										{ event_t::dec_digit,				{ state_t::integer,			BIND(number_parser::on_integer)		} },
-										{ event_t::dot,						{ state_t::dot,				BIND(number_parser::on_dot)			} },
-										{ event_t::symbol,					{ state_t::done,			BIND(number_parser::on_done)		} },
+		{ state_t::integer,			{	{ event_t::dec_zero,	{ state_t::integer,			BIND(number_parser::on_integer)		} },
+										{ event_t::dec_digit,	{ state_t::integer,			BIND(number_parser::on_integer)		} },
+										{ event_t::dot,			{ state_t::dot,				BIND(number_parser::on_dot)			} },
+										{ event_t::symbol,		{ state_t::done,			BIND(number_parser::on_done)		} },
 		} },
-		{ state_t::fractional,		{	{ event_t::dec_zero,				{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
-										{ event_t::dec_digit,				{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
-										{ event_t::exponent,				{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
-										{ event_t::symbol,					{ state_t::done,			BIND(number_parser::on_done)		} },
+		{ state_t::fractional,		{	{ event_t::dec_zero,	{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
+										{ event_t::dec_digit,	{ state_t::fractional,		BIND(number_parser::on_fractional)	} },
+										{ event_t::exponent,	{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
+										{ event_t::symbol,		{ state_t::done,			BIND(number_parser::on_done)		} },
 		} },
-		{ state_t::exponent_delim,	{	{ event_t::minus,					{ state_t::exponent_sign,	BIND(number_parser::on_exponent)	} },
-										{ event_t::plus,					{ state_t::exponent_sign,	BIND(number_parser::on_exponent)	} },
-										{ event_t::dec_zero,				{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
-										{ event_t::dec_digit,				{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::exponent_delim,	{	{ event_t::minus,		{ state_t::exponent_sign,	BIND(number_parser::on_exponent)	} },
+										{ event_t::plus,		{ state_t::exponent_sign,	BIND(number_parser::on_exponent)	} },
+										{ event_t::dec_zero,	{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
+										{ event_t::dec_digit,	{ state_t::exponent_delim,	BIND(number_parser::on_exponent)	} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::exponent_sign,	{	{ event_t::dec_zero,				{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
-										{ event_t::dec_digit,				{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
-										{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::exponent_sign,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
+										{ event_t::dec_digit,	{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
+										{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::exponent_val,	{	{ event_t::dec_zero,				{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
-										{ event_t::dec_digit,				{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
-										{ event_t::symbol,					{ state_t::done,			BIND(number_parser::on_done)		} },
+		{ state_t::exponent_val,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
+										{ event_t::dec_digit,	{ state_t::exponent_val,	BIND(number_parser::on_exponent)	} },
+										{ event_t::symbol,		{ state_t::done,			BIND(number_parser::on_done)		} },
 		} },
-		{ state_t::done,			{	{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::done,			{	{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
-		{ state_t::failure,			{	{ event_t::symbol,					{ state_t::failure,			BIND(number_parser::on_fail)		} },
+		{ state_t::failure,			{	{ event_t::symbol,		{ state_t::failure,			BIND(number_parser::on_fail)		} },
 		} },
 	}
 {
@@ -214,15 +214,15 @@ number_parser::append_digit(int& val, const unsigned char& c)
 
 	switch (c)
 	{
-	case 0x31: val += 1; break;
-	case 0x32: val += 2; break;
-	case 0x33: val += 3; break;
-	case 0x34: val += 4; break;
-	case 0x35: val += 5; break;
-	case 0x36: val += 6; break;
-	case 0x37: val += 7; break;
-	case 0x38: val += 8; break;
-	case 0x39: val += 9; break;
+	case 0x31: val += 1; break; //1
+	case 0x32: val += 2; break; //2
+	case 0x33: val += 3; break; //3
+	case 0x34: val += 4; break;	//4
+	case 0x35: val += 5; break;	//5
+	case 0x36: val += 6; break;	//6
+	case 0x37: val += 7; break;	//7
+	case 0x38: val += 8; break;	//8
+	case 0x39: val += 9; break;	//9
 	}
 
 	return result_t::s_ok;

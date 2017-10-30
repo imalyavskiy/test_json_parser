@@ -40,7 +40,9 @@ namespace json
 			return std::string("unknown");
 		};
 
+#ifdef _DEBUG
 		std::cout << "null parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
+#endif // _DEBUG
 		m_state = new_state;
 	}
 #endif // _DEBUG

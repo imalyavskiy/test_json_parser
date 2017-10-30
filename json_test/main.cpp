@@ -46,15 +46,25 @@ process(/*const */std::istream& input)
 	if (!p)
 		return result_t::e_fatal;
 
+	int pos = 0;
+
 	while (input >> std::noskipws >> c || result != json::result_t::s_done)
 	{
 		print_symbol(c);
 
-		result = p->putchar(c, (int)input.tellg() - 1);
+		pos = (int)input.tellg() - 1;
+
+		result = p->putchar(c, pos);
 
 		if (json::result_t::s_ok > result)
 		{
-			std::cout << "Error while parsing: reason \'" << c << "\'" << std::endl;
+			std::cout << "Error while parsing: reason \'" << c << "\' at " << pos << std::endl;
+			break;
+		}
+
+		if(json::result_t::s_done == result)
+		{
+			std::cout << "Success" << std::endl;
 			break;
 		}
 	}

@@ -8,6 +8,7 @@ object_parser::object_parser()
 	, m_event_2_state_table
 	{
 		{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	BIND(object_parser::on_more) } },
+									{ event_t::skip,		{ state_t::val_before,	BIND(object_parser::on_more) } },
 									{ event_t::symbol,		{ state_t::failure,		BIND(object_parser::on_fail) } },
 		} },
 		{ state_t::key_before,	{	{ event_t::obj_end,		{ state_t::done,		BIND(object_parser::on_done) } },
@@ -50,34 +51,42 @@ object_parser::~object_parser()
 object_parser::event_t
 object_parser::to_event(const char& c) const
 {
+	auto is_space = [](const char& c)->bool
+	{
+		// space, tab, cr, lf
+		return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
+	};
+
 	switch(state::get())
 	{
 		case state_t::initial:
-			if (0x7B == c)		// {
+			if (0x7B == c)	//{
 				return event_t::obj_begin;
+			if(is_space(c)) 
+				return event_t::skip;
 			break;
 		case state_t::key_before:
-			if (0x7D == c)		// }
+			if (0x7D == c)	//}
 				return event_t::obj_end;
-			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+			if (is_space(c))
 				return event_t::skip;
 			break;
 		case state_t::key_after:
-			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+			if (is_space(c))
 				return event_t::skip;
-			if (0x3A == c)
+			if (0x3A == c)	//:
 				return event_t::colon;
 			break;
 		case state_t::val_before:
-			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+			if (is_space(c))
 				return event_t::skip;
 			break;
 		case state_t::val_after:
-			if (0x7D == c)		// }
+			if (0x7D == c)	//}
 				return event_t::obj_end;
-			if (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c)
+			if (is_space(c))
 				return event_t::skip;
-			if (0x2c == c)
+			if (0x2c == c)	//,
 				return event_t::comma;
 			break;
 	}
@@ -103,7 +112,6 @@ object_parser::to_event(const result_t& r) const
 	return event_t::nothing;
 };
 
-
 result_t
 object_parser::putchar(const char& c, const int pos)
 {
@@ -120,15 +128,13 @@ object_parser::putchar(const char& c, const int pos)
 		r = result_t::s_need_more == new_r && result_t::s_done_rpt == r? 
 			parser_impl::step(to_event(c), c, pos) : 
 			new_r;
+
+		return r;
 	}
+
+	assert(0);
 	
 	return r;
-}
-
-result_t
-object_parser::on_initial(const char& c, const int pos)
-{
-	return result_t::s_need_more;
 }
 
 result_t
@@ -172,12 +178,16 @@ object_parser::on_fail(const char& c, const int pos)
 void 
 object_parser::reset()
 {
+#ifdef _DEBUG
 	std::cout << ">>> begin reset" << std::endl;
+#endif // _DEBUG
 	
 	state::set(state_t::initial);
 	
 	m_key_parser->reset();
 	m_val_parser->reset();
 	
+#ifdef _DEBUG
 	std::cout << ">>> end reset" << std::endl;
+#endif // _DEBUG
 }

@@ -29,7 +29,7 @@ namespace json
 		colon,			// :
 		comma,			// ,
 		symbol,			// any symbol
-		skip,	// space, tab, cr, lf
+		skip,			// space, tab, cr, lf
 		nothing,		// no action event
 	};
 
@@ -55,7 +55,9 @@ namespace json
 			return std::string("unknown");
 		};
 
+#ifdef _DEBUG
 		std::cout << "object parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
+#endif // _DEBUG
 		m_state = new_state;
 	}
 #endif // _DEBUG
@@ -75,7 +77,6 @@ namespace json
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 
-		result_t on_initial(const char& c, const int pos);
 		result_t on_more(const char& c, const int pos);
 		result_t on_new(const char& c, const int pos);
 		result_t on_key(const char& c, const int pos);

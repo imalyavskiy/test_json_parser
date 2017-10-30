@@ -5,9 +5,9 @@ namespace json
 	enum class e_array_states
 	{
 		initial,
-		before_val,
-		in_value,
-		after_val,
+		val_before,
+		val_inside,
+		val_after,
 		done,
 		failure,
 	};
@@ -15,10 +15,14 @@ namespace json
 	enum class e_array_events
 	{
 		// ascii part
-		symbol					= 0xffff,
-		left_square_bracket		= 0x005B,
-		right_square_bracket	= 0x005D,
-		comma					= 0x00,
+		arr_begin	= 0x005B,
+		arr_end		= 0x005D,
+		val_done,	//
+		val_error,	//
+		comma		= 0x00,
+		symbol		= 0xffff,
+		skip,		// space, tab, cr, lf
+		nothing,	// no action event
 	};
 
 #ifdef _DEBUG
@@ -30,17 +34,18 @@ namespace json
 			switch (s)
 			{
 			case e_array_states::initial:		return std::string("initial");
-			case e_array_states::before_val:	return std::string("before_val");
-			case e_array_states::in_value:		return std::string("in_value");
-			case e_array_states::after_val:		return std::string("after_val");
+			case e_array_states::val_before:	return std::string("val_before");
+			case e_array_states::val_inside:	return std::string("val_inside");
+			case e_array_states::val_after:		return std::string("val_after");
 			case e_array_states::done:			return std::string("done");
 			case e_array_states::failure:		return std::string("failure");
 			}
 
 			return std::string("unknown");
 		};
-
+#ifdef _DEBUG
 		std::cout << "array parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
+#endif
 		m_state = new_state;
 	}
 #endif // _DEBUG
@@ -61,9 +66,9 @@ namespace json
 
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
 		
-		result_t on_before_value(const unsigned char& c, const int pos);
-		result_t on_after_value(const unsigned& c, const int pos);
-		result_t on_value(const unsigned& c, const int pos);
+		result_t on_new(const unsigned char& c, const int pos);
+		result_t on_more(const unsigned& c, const int pos);
+		result_t on_val(const unsigned& c, const int pos);
 		result_t on_done(const unsigned char& c, const int pos);
 		result_t on_fail(const unsigned char& c, const int pos);
 
