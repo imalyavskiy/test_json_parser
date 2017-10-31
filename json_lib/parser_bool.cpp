@@ -46,6 +46,7 @@ void
 bool_parser::reset()
 {
 	state::set(state_t::initial);
+	m_str.clear();
 	m_value.reset();
 }
 
@@ -99,49 +100,75 @@ bool_parser::to_event(const result_t& c) const
 result_t 
 bool_parser::on_t(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_r(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_u(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_f(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_a(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_l(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t 
 bool_parser::on_s(const unsigned char& c, const int pos)
 {
+	m_str += c;
 	return result_t::s_need_more;
 }
 
 result_t
 bool_parser::on_done(const unsigned char& c, const int pos)
 {
-	return result_t::s_done;
+	m_str += c;
+
+	auto update = [this](const bool val)->result_t
+	{
+		if (!m_value.has_value())
+			m_value.emplace();
+		
+		(*m_value) = val;
+	
+		return result_t::s_done;
+	};
+
+	if (m_str == "true")
+		return update(true);
+	if (m_str == "false")
+		return update(false);
+
+	assert(0);
+
+	return result_t::e_unexpected;
 }
 
 result_t 

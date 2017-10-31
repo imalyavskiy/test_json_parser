@@ -89,9 +89,11 @@ namespace json
 
 		// own methods
 		result_t on_more(const char& c, const int pos);
+		result_t on_begin(const char& c, const int pos);
 		result_t on_new(const char& c, const int pos);
 		result_t on_key(const char& c, const int pos);
 		result_t on_val(const char& c, const int pos);
+		result_t on_got_val(const char& c, const int pos);
 		result_t on_done(const char& c, const int pos);
 		result_t on_fail(const char& c, const int pos);
 

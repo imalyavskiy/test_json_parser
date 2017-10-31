@@ -95,6 +95,11 @@ null_parser::on_l(const unsigned char& c, const int pos)
 result_t 
 null_parser::on_done(const unsigned char& c, const int pos)
 {
+	if (!m_value.has_value())
+		m_value.emplace();
+
+	(*m_value) = nullptr;
+
 	return result_t::s_done;
 }
 

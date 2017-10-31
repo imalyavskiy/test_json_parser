@@ -7,7 +7,7 @@ object_parser::object_parser()
 	, m_val_parser(create_value_parser())
 	, m_event_2_state_table
 	{
-		{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	BIND(object_parser::on_more) } },
+		{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	BIND(object_parser::on_begin) } },
 									{ event_t::skip,		{ state_t::val_before,	BIND(object_parser::on_more) } },
 									{ event_t::symbol,		{ state_t::failure,		BIND(object_parser::on_fail) } },
 		} },
@@ -27,7 +27,7 @@ object_parser::object_parser()
 									{ event_t::val_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
 									{ event_t::skip,		{ state_t::val_before,	BIND(object_parser::on_more) } },
 		} },
-		{ state_t::val_inside,	{	{ event_t::val_done,	{ state_t::val_after,	BIND(object_parser::on_more) } },
+		{ state_t::val_inside,	{	{ event_t::val_done,	{ state_t::val_after,	BIND(object_parser::on_got_val) } },
 									{ event_t::val_error,	{ state_t::failure,		BIND(object_parser::on_fail) } },
 									{ event_t::symbol,		{ state_t::val_inside,	BIND(object_parser::on_val ) } },
 		} },
@@ -173,16 +173,17 @@ object_parser::on_more(const char& c, const int pos)
 }
 
 result_t 
-object_parser::on_new(const char& c, const int pos)
+object_parser::on_begin(const char& c, const int pos)
 {
 	if (!m_value.has_value())
 		m_value.emplace();
-	
-	const std::string key	= std::get<std::string>(m_key_parser->get());
-	const value val			= m_val_parser->get();
-	
-	(*m_value)[key] = val;
 
+	return result_t::s_need_more;
+}
+
+result_t 
+object_parser::on_new(const char& c, const int pos)
+{
 	reset();
 	return result_t::s_need_more;
 }
@@ -202,13 +203,26 @@ object_parser::on_val(const char& c, const int pos)
 result_t
 object_parser::on_done(const char& c, const int pos)
 {
-	reset();
 	return result_t::s_done;
 }
 
 result_t
 object_parser::on_fail(const char& c, const int pos)
 {
+	m_value.reset();
 	return result_t::e_unexpected;
+}
+
+result_t 
+object_parser::on_got_val(const char& c, const int pos)
+{
+	assert(m_value.has_value());
+
+	const std::string key = std::get<std::string>(m_key_parser->get());
+	const value val = m_val_parser->get();
+
+	(*m_value)[key] = val;
+
+	return result_t::s_need_more;
 }
 

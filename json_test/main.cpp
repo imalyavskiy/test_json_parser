@@ -66,6 +66,12 @@ process(/*const */std::istream& input, json::object_t& jsobj)
 		if(json::result_t::s_done == result)
 		{
 			std::cout << "Success" << std::endl;
+
+			json::value val = p->get();
+			json::object_t obj = std::get<json::object_t>(val);
+
+			std::cout << obj.str() << std::endl;
+
 			break;
 		}
 	}
@@ -130,7 +136,8 @@ const std::string& json_data_structure_2(std::string& str)
 	using obj = json::object_t;
 	using arr = json::array_t;
 
-	auto glossary = obj{
+	auto glossary = obj
+	{
 		{ "title", "example glossary"},
 		{ "GlossDiv", obj{
 			{ "title", "S"},
@@ -150,12 +157,12 @@ const std::string& json_data_structure_2(std::string& str)
 							false,
 							nullptr,
 							(int64_t)-1,
-							(int64_t)100}
+							(int64_t)100
 						}}
 					}}
 				}}
 			}}
-		}
+		}}
 	};
 
 	std::cout << glossary.str(str) << std::endl;
@@ -221,7 +228,6 @@ int json_data_structure_main(int argc, char** argv)
 int main(int argc, char** argv)
 {
 	parser_main(argc, argv);
-	json_data_structure_main(argc, argv);
 
 	return 1;
 };

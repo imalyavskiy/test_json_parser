@@ -148,18 +148,27 @@ string_parser::on_initial(const char&c, const int pos)
 result_t
 string_parser::on_inside(const char&c, const int pos)
 {
+	if (!m_value.has_value())
+		m_value.emplace();
+
+	(*m_value) += c;
+
 	return result_t::s_need_more;
 }
 
 result_t
 string_parser::on_escape(const char&c, const int pos)
 {
+	assert(m_value.has_value());
+	(*m_value) += c;
 	return result_t::s_need_more;
 }
 
 result_t
 string_parser::on_unicode(const char&c, const int pos)
 {
+	assert(m_value.has_value());
+	(*m_value) += c;
 	return result_t::s_need_more;
 }
 

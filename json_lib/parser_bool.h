@@ -96,6 +96,8 @@ namespace json
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
+		std::string m_str;
+
 		std::optional<my_value_t> m_value;
 	};
 }
