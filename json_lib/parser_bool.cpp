@@ -42,10 +42,58 @@ bool_parser::~bool_parser()
 {
 }
 
+void
+bool_parser::reset()
+{
+	state::set(state_t::initial);
+	m_value.reset();
+}
+
 result_t 
 bool_parser::putchar(const char& c, const int pos)
 {
 	return parser_impl::step(to_event(c), c, pos);
+}
+
+value
+bool_parser::get() const
+{
+	if (m_value.has_value())
+		return *m_value;
+
+	assert(0); // TODO: throw an exception
+	return value();
+}
+
+bool_parser::event_t 
+bool_parser::to_event(const char& c) const
+{
+	switch (c)
+	{
+	case 0x61:
+		return event_t::letter_a;
+	case 0x65:
+		return event_t::letter_e;
+	case 0x66:
+		return event_t::letter_f;
+	case 0x6c:
+		return event_t::letter_l;
+	case 0x72:
+		return event_t::letter_r;
+	case 0x73:
+		return event_t::letter_s;
+	case 0x74:
+		return event_t::letter_t;
+	case 0x75:
+		return event_t::letter_u;
+	}
+	return event_t::symbol;
+}
+
+bool_parser::event_t
+bool_parser::to_event(const result_t& c) const
+{
+	return event_t::symbol;
 }
 
 result_t 
@@ -100,41 +148,4 @@ result_t
 bool_parser::on_fail(const unsigned char& c, const int pos)
 {
 	return result_t::e_unexpected;
-}
-
-void
-bool_parser::reset()
-{
-	state::set(state_t::initial);
-}
-
-bool_parser::event_t 
-bool_parser::to_event(const char& c) const
-{
-	switch (c)
-	{
-	case 0x61:
-		return event_t::letter_a;
-	case 0x65:
-		return event_t::letter_e;
-	case 0x66:
-		return event_t::letter_f;
-	case 0x6c:
-		return event_t::letter_l;
-	case 0x72:
-		return event_t::letter_r;
-	case 0x73:
-		return event_t::letter_s;
-	case 0x74:
-		return event_t::letter_t;
-	case 0x75:
-		return event_t::letter_u;
-	}
-	return event_t::symbol;
-}
-
-bool_parser::event_t
-bool_parser::to_event(const result_t& c) const
-{
-	return event_t::symbol;
 }

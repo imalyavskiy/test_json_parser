@@ -47,6 +47,60 @@ object_parser::~object_parser()
 {
 }
 
+void 
+object_parser::reset()
+{
+#ifdef _DEBUG
+	std::cout << ">>> begin reset" << std::endl;
+#endif // _DEBUG
+	
+	state::set(state_t::initial);
+	
+	m_key_parser->reset();
+	m_val_parser->reset();
+
+	m_value.reset();
+	
+#ifdef _DEBUG
+	std::cout << ">>> end reset" << std::endl;
+#endif // _DEBUG
+}
+
+result_t
+object_parser::putchar(const char& c, const int pos)
+{
+	result_t r = parser_impl::step(to_event(c), c, pos);
+	
+	event_t e = to_event(r);
+
+	if (event_t::nothing == e)
+		return r;
+
+	if (event_t::val_done == e || event_t::key_done == e)
+	{
+		result_t new_r = parser_impl::step(e, c, pos);
+		r = result_t::s_need_more == new_r && result_t::s_done_rpt == r? 
+			parser_impl::step(to_event(c), c, pos) : 
+			new_r;
+
+		return r;
+	}
+
+	assert(0);
+	
+	return r;
+}
+
+value 
+object_parser::get() const
+{
+	if (m_value.has_value())
+		return *m_value;
+
+	assert(0); // TODO: throw an exception
+	return value();
+}
+
 // char to token name
 object_parser::event_t
 object_parser::to_event(const char& c) const
@@ -113,31 +167,6 @@ object_parser::to_event(const result_t& r) const
 };
 
 result_t
-object_parser::putchar(const char& c, const int pos)
-{
-	result_t r = parser_impl::step(to_event(c), c, pos);
-	
-	event_t e = to_event(r);
-
-	if (event_t::nothing == e)
-		return r;
-
-	if (event_t::val_done == e || event_t::key_done == e)
-	{
-		result_t new_r = parser_impl::step(e, c, pos);
-		r = result_t::s_need_more == new_r && result_t::s_done_rpt == r? 
-			parser_impl::step(to_event(c), c, pos) : 
-			new_r;
-
-		return r;
-	}
-
-	assert(0);
-	
-	return r;
-}
-
-result_t
 object_parser::on_more(const char& c, const int pos)
 {
 	return result_t::s_need_more;
@@ -146,6 +175,14 @@ object_parser::on_more(const char& c, const int pos)
 result_t 
 object_parser::on_new(const char& c, const int pos)
 {
+	if (!m_value.has_value())
+		m_value.emplace();
+	
+	const std::string key	= std::get<std::string>(m_key_parser->get());
+	const value val			= m_val_parser->get();
+	
+	(*m_value)[key] = val;
+
 	reset();
 	return result_t::s_need_more;
 }
@@ -175,19 +212,3 @@ object_parser::on_fail(const char& c, const int pos)
 	return result_t::e_unexpected;
 }
 
-void 
-object_parser::reset()
-{
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-	
-	state::set(state_t::initial);
-	
-	m_key_parser->reset();
-	m_val_parser->reset();
-	
-#ifdef _DEBUG
-	std::cout << ">>> end reset" << std::endl;
-#endif // _DEBUG
-}

@@ -53,49 +53,28 @@ string_parser::~string_parser()
 {
 }
 
+void 
+string_parser::reset()
+{
+	state::set(state_t::initial);
+	m_value.reset();
+}
+
 result_t
 string_parser::putchar(const char& c, const int pos)
 {
 	return parser_impl::step(to_event(c), c, pos);
 }
 
-
-result_t
-string_parser::on_initial(const char&c, const int pos)
+value 
+string_parser::get() const
 {
-	return result_t::s_need_more;
-}
+	if (m_value.has_value())
+		return *m_value;
 
-result_t
-string_parser::on_inside(const char&c, const int pos)
-{
-	return result_t::s_need_more;
+	assert(0); // TODO: throw an exception
+	return value();
 }
-
-result_t
-string_parser::on_escape(const char&c, const int pos)
-{
-	return result_t::s_need_more;
-}
-
-result_t
-string_parser::on_unicode(const char&c, const int pos)
-{
-	return result_t::s_need_more;
-}
-
-result_t
-string_parser::on_done(const char&c, const int pos)
-{
-	return result_t::s_done;
-}
-
-result_t 
-string_parser::on_fail(const char&c, const int pos)
-{
-	return result_t::e_unexpected;
-}
-
 
 e_string_events
 string_parser::to_event(const char& c) const
@@ -160,8 +139,38 @@ string_parser::to_event(const result_t& c) const
 	return event_t::symbol;
 }
 
-void 
-string_parser::reset()
+result_t
+string_parser::on_initial(const char&c, const int pos)
 {
-	state::set(state_t::initial);
+	return result_t::s_need_more;
+}
+
+result_t
+string_parser::on_inside(const char&c, const int pos)
+{
+	return result_t::s_need_more;
+}
+
+result_t
+string_parser::on_escape(const char&c, const int pos)
+{
+	return result_t::s_need_more;
+}
+
+result_t
+string_parser::on_unicode(const char&c, const int pos)
+{
+	return result_t::s_need_more;
+}
+
+result_t
+string_parser::on_done(const char&c, const int pos)
+{
+	return result_t::s_done;
+}
+
+result_t 
+string_parser::on_fail(const char&c, const int pos)
+{
+	return result_t::e_unexpected;
 }

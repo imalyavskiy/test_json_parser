@@ -57,10 +57,37 @@ number_parser::~number_parser()
 {
 }
 
+void 
+number_parser::reset()
+{
+	state::set(state_t::initial);
+	
+	m_value.reset();
+}
+
 result_t 
 number_parser::putchar(const char& c, const int pos)
 {
 	return parser_impl::step(to_event(c), c, pos);
+}
+
+value
+number_parser::get() const
+{
+	if (m_value.has_value())
+	{
+		// TODO: construct proper value
+		const number& num = (*m_value);
+
+		int64_t i64 = num.m_integer;
+		if (!num.m_positive)
+			i64 *= -1;
+
+		return value(i64);
+	}
+
+	assert(0); // TODO: throw an exception
+	return value();
 }
 
 result_t
@@ -73,40 +100,51 @@ number_parser::on_initial(const unsigned char& c, const int pos)
 result_t
 number_parser::on_minus(const unsigned char& c, const int pos)
 {
-	m_positive = false;
+	if (!m_value.has_value())
+		m_value.emplace();
+	
+	(*m_value).m_positive = false;
+
 	return result_t::s_need_more;
 }
 
 result_t
 number_parser::on_integer(const unsigned char& c, const int pos)
 {
-	const result_t res = append_digit(m_integer, c);
+	if (!m_value.has_value())
+		m_value.emplace();
+
+	const result_t res = append_digit((*m_value).m_integer, c);
 	return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
 result_t
 number_parser::on_fractional(const unsigned char& c, const int pos)
 {
-	const result_t res = append_digit(m_fractional, c);
+	assert(m_value.has_value());
+	const result_t res = append_digit((*m_value).m_fractional, c);
 	return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
 result_t
 number_parser::on_exponent(const unsigned char& c, const int pos)
 {
-	m_has_exponent = true;
+	assert(m_value.has_value());
+	(*m_value).m_has_exponent = true;
 	return result_t::s_need_more;
 }
 
 result_t
 number_parser::on_exponent_sign(const unsigned char& c, const int pos)
 {
+	assert(m_value.has_value());
+
 	switch (c)
 	{
 	case event_t::minus:
-		m_exponent_positive = false; break;
+		(*m_value).m_exponent_positive = false; break;
 	case event_t::plus:
-		m_exponent_positive = true; break;
+		(*m_value).m_exponent_positive = true; break;
 	default:
 		return result_t::e_fatal;
 	}
@@ -132,16 +170,20 @@ number_parser::on_zero(const unsigned char& c, const int pos)
 	case state_t::initial:
 	case state_t::leading_minus:
 	case state_t::integer:
-		res = append_digit(m_integer, c);
+		if (!m_value.has_value())
+			m_value.emplace();
+		res = append_digit((*m_value).m_integer, c);
 		break;
 	case state_t::dot:
 	case state_t::fractional:
-		res = append_digit(m_fractional, c);
+		assert(m_value.has_value());
+		res = append_digit((*m_value).m_fractional, c);
 		break;
 	case state_t::exponent_delim:
 	case state_t::exponent_sign:
+		assert(m_value.has_value());
 	case state_t::exponent_val:
-		res = append_digit(m_exponent_value, c);
+		res = append_digit((*m_value).m_exponent_value, c);
 		break;
 	}
 
@@ -189,19 +231,6 @@ number_parser::event_t
 number_parser::to_event(const result_t& c) const
 {
 	return event_t::symbol;
-}
-
-void 
-number_parser::reset()
-{
-	state::set(state_t::initial);
-	
-	m_positive			= true;
-	m_integer			= 0;
-	m_fractional		= 0;
-	m_has_exponent		= false;
-	m_exponent_positive = true;
-	m_exponent_value	= 0;
 }
 
 result_t 

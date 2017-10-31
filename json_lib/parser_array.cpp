@@ -35,6 +35,34 @@ array_parser::~array_parser()
 {
 }
 
+void 
+array_parser::reset()
+{
+#ifdef _DEBUG
+	std::cout << ">>> begin reset" << std::endl;
+#endif // _DEBUG
+	
+	state::set(state_t::initial);
+	
+	m_value_parser->reset();
+
+	m_value.reset();
+	
+#ifdef _DEBUG
+	std::cout << ">>> end reset" << std::endl;
+#endif // _DEBUG
+}
+
+value
+array_parser::get() const 
+{
+	if (m_value.has_value())
+		return *m_value;
+
+	assert(0); // TODO: throw an exception
+	return value();
+}
+
 array_parser::event_t
 array_parser::to_event(const char& c) const
 {
@@ -119,6 +147,13 @@ array_parser::on_more(const unsigned& c, const int pos)
 result_t
 array_parser::on_new(const unsigned char& c, const int pos)
 {
+	if (!m_value.has_value())
+		m_value.emplace();
+
+	const value val = m_value_parser->get();
+
+	(*m_value).push_back(val);
+
 	m_value_parser->reset();
 	return result_t::s_need_more;
 }
@@ -139,20 +174,4 @@ result_t
 array_parser::on_fail(const unsigned char& c, const int pos)
 {
 	return result_t::e_unexpected;
-}
-
-void 
-array_parser::reset()
-{
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-	
-	state::set(state_t::initial);
-	
-	m_value_parser->reset();
-	
-#ifdef _DEBUG
-	std::cout << ">>> end reset" << std::endl;
-#endif // _DEBUG
 }

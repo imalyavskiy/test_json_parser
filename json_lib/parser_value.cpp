@@ -22,6 +22,22 @@ value_parser::~value_parser()
 {
 }
 
+void 
+value_parser::reset()
+{
+#ifdef _DEBUG
+	std::cout << ">>> begin reset" << std::endl;
+#endif // _DEBUG
+
+	state::set(state_t::initial);
+	for (ParserItem_t& p : parsing_unit)
+		p.first = true, p.second->reset();
+
+#ifdef _DEBUG
+	std::cout << "<<< end reset" << std::endl;
+#endif // _DEBUG
+}
+
 result_t
 value_parser::putchar(const char& c, const int pos)
 {
@@ -37,6 +53,36 @@ value_parser::putchar(const char& c, const int pos)
 	return r;
 }
 
+value
+value_parser::get() const
+{
+	for (auto cit = parsing_unit.cbegin(); cit != parsing_unit.cend(); ++cit)
+		if (true == cit->first)
+			return cit->second->get();
+	
+	assert(0); // TODO: throw an exception
+	return value();
+}
+
+value_parser::event_t 
+value_parser::to_event(const char& c) const
+{
+	return event_t::symbol;
+}
+
+value_parser::event_t
+value_parser::to_event(const result_t& c) const
+{
+	switch (state::get())
+	{
+	case state_t::read:
+		if (result_t::s_done == c || result_t::s_done_rpt == c)
+			return event_t::val_done;
+		break;
+	}
+
+	return event_t::nothing;
+}
 
 result_t 
 value_parser::on_data(const unsigned char& c, const int pos)
@@ -83,41 +129,5 @@ result_t
 value_parser::on_fail(const unsigned char& c, const int pos)
 {
 	return result_t::e_unexpected;
-}
-
-void 
-value_parser::reset()
-{
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-
-	state::set(state_t::initial);
-	for (ParserItem_t& p : parsing_unit)
-		p.first = true, p.second->reset();
-
-#ifdef _DEBUG
-	std::cout << "<<< end reset" << std::endl;
-#endif // _DEBUG
-}
-
-value_parser::event_t 
-value_parser::to_event(const char& c) const
-{
-	return event_t::symbol;
-}
-
-value_parser::event_t
-value_parser::to_event(const result_t& c) const
-{
-	switch (state::get())
-	{
-	case state_t::read:
-		if (result_t::s_done == c || result_t::s_done_rpt == c)
-			return event_t::val_done;
-		break;
-	}
-
-	return event_t::nothing;
 }
 

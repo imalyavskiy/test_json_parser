@@ -29,12 +29,50 @@ null_parser::~null_parser()
 {
 }
 
+void 
+null_parser::reset()
+{
+	state::set(state_t::initial);
+	m_value.reset();
+}
+
 result_t
 null_parser::putchar(const char& c, const int pos)
 {
 	return parser_impl::step(to_event(c), c, pos);
 }
 
+value
+null_parser::get() const
+{
+	if (m_value.has_value())
+		return *m_value;
+
+	assert(0); // TODO: throw an exception
+	return value();
+}
+
+null_parser::event_t
+null_parser::to_event(const char& c) const
+{
+	switch (c)
+	{
+	case 0x6e:
+		return event_t::letter_n;
+	case 0x75:
+		return event_t::letter_u;
+	case 0x6c:
+		return event_t::letter_l;
+	}
+
+	return event_t::other;
+}
+
+null_parser::event_t
+null_parser::to_event(const result_t& c) const
+{
+	return event_t::other;
+}
 
 result_t 
 null_parser::on_n(const unsigned char& c, const int pos)
@@ -66,30 +104,3 @@ null_parser::on_fail(const unsigned char& c, const int pos)
 	return result_t::e_unexpected;
 }
 
-void 
-null_parser::reset()
-{
-	state::set(state_t::initial);
-}
-
-null_parser::event_t
-null_parser::to_event(const char& c) const
-{
-	switch (c)
-	{
-	case 0x6e:
-		return event_t::letter_n;
-	case 0x75:
-		return event_t::letter_u;
-	case 0x6c:
-		return event_t::letter_l;
-	}
-
-	return event_t::other;
-}
-
-null_parser::event_t
-null_parser::to_event(const result_t& c) const
-{
-	return event_t::other;
-}

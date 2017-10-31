@@ -67,15 +67,24 @@ namespace json
 		using event_t				= e_number_events;
 		using state_t				= e_number_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
+		using my_value_t			= std::variant<int64_t, uint64_t, int32_t, uint32_t, int16_t, uint16_t, int8_t, uint8_t, double, float>;
+
 	public:
 		number_parser();
 		~number_parser();
 
 	protected:
+		// Inherited via parser
+		virtual void reset() final;
 		virtual result_t putchar(const char& c, const int pos) final;
+		virtual value get() const final;
 
+		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const result_t& c) const override;
 
+		// Own methods
 		result_t on_initial(const unsigned char& c, const int pos);
 		result_t on_minus(const unsigned char& c, const int pos);
 		result_t on_integer(const unsigned char& c, const int pos);
@@ -88,22 +97,31 @@ namespace json
 		result_t on_done(const unsigned char& c, const int pos);
 		result_t on_fail(const unsigned char& c, const int pos);
 
-		virtual event_t to_event(const char& c) const override;
-		virtual event_t to_event(const result_t& c) const override;
-
-		virtual void reset() final;
-
 		static result_t append_digit(int& val, const unsigned char& c);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
-		bool m_positive;
-		int  m_integer;
-		int  m_fractional;
-		bool m_has_exponent;
-		bool m_exponent_positive;
-		int  m_exponent_value;
+		struct number
+		{
+			number()
+			: m_positive(true)
+			, m_integer(0)
+			, m_fractional(0)
+			, m_has_exponent(false)
+			, m_exponent_positive(true)
+			, m_exponent_value(0)
+			{}
+
+			bool m_positive;
+			int  m_integer;
+			int  m_fractional;
+			bool m_has_exponent;
+			bool m_exponent_positive;
+			int  m_exponent_value;
+		};
+
+		std::optional<number> m_value;
 	};
 }
 #endif // __PARSER_NUMBER_H__

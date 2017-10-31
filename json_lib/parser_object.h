@@ -68,32 +68,40 @@ namespace json
 		using event_t				= e_object_events;
 		using state_t				= e_object_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
+		using my_value_t			= object_t;
 	public:
+		// {ctor}
 		object_parser();
+
+		// {dtor}
 		~object_parser();
 
 	protected:
+		// inherited via parser
+		virtual void reset() final;
 		virtual result_t putchar(const char& c, const int pos) final;
+		virtual value get() const final;
 
+		// inherited via parser_impl
 		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual event_t to_event(const char& c)	  const override;
+		virtual event_t to_event(const result_t& c) const override;
 
+		// own methods
 		result_t on_more(const char& c, const int pos);
 		result_t on_new(const char& c, const int pos);
 		result_t on_key(const char& c, const int pos);
 		result_t on_val(const char& c, const int pos);
 		result_t on_done(const char& c, const int pos);
 		result_t on_fail(const char& c, const int pos);
-		
-		virtual event_t to_event(const char& c)	  const override;
-		virtual event_t to_event(const result_t& c) const override;
-
-		virtual void reset() final;
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
 		parser::ptr m_key_parser;
 		parser::ptr m_val_parser;
+
+		std::optional<my_value_t> m_value;
 	};
 } 
 
