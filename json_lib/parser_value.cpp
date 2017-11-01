@@ -57,8 +57,12 @@ value
 value_parser::get() const
 {
 	for (auto cit = parsing_unit.cbegin(); cit != parsing_unit.cend(); ++cit)
+	{
 		if (true == cit->first)
+		{
 			return cit->second->get();
+		}
+	}
 	
 	assert(0); // TODO: throw an exception
 	return value();

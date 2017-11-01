@@ -43,9 +43,10 @@ namespace json
 
 			return std::string("unknown");
 		};
-#ifdef _DEBUG
-		std::cout << "array parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-#endif
+
+		std::cout << "array parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
+		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
+
 		m_state = new_state;
 	}
 #endif // _DEBUG
@@ -73,9 +74,11 @@ namespace json
 		virtual event_t to_event(const result_t& r) const override;
 		
 		// Own methods
+		result_t on_begin(const unsigned char& c, const int pos);
 		result_t on_new(const unsigned char& c, const int pos);
 		result_t on_more(const unsigned& c, const int pos);
 		result_t on_val(const unsigned& c, const int pos);
+		result_t on_got_val(const char& c, const int pos);
 		result_t on_done(const unsigned char& c, const int pos);
 		result_t on_fail(const unsigned char& c, const int pos);
 

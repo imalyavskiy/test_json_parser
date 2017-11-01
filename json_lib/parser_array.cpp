@@ -5,7 +5,7 @@ using namespace json;
 array_parser::array_parser()
 	: m_event_2_state_table
 	{
-		{ state_t::initial,		{	{ event_t::arr_begin,	{ state_t::val_before,	BIND(array_parser::on_new)	} },
+		{ state_t::initial,		{	{ event_t::arr_begin,	{ state_t::val_before,	BIND(array_parser::on_begin)} },
 									{ event_t::skip,		{ state_t::val_before,	BIND(array_parser::on_more)	} },
 									{ event_t::symbol,		{ state_t::failure,		BIND(array_parser::on_fail)	} },
 		} },
@@ -19,7 +19,7 @@ array_parser::array_parser()
 									{ event_t::symbol,		{ state_t::failure,		BIND(array_parser::on_fail)	} },
 		} },
  		{ state_t::val_inside,	{	{ event_t::symbol,		{ state_t::val_inside,	BIND(array_parser::on_val)	} },
-									{ event_t::val_done,	{ state_t::val_after,	BIND(array_parser::on_more) } },
+									{ event_t::val_done,	{ state_t::val_after,	BIND(array_parser::on_got_val) } },
 									{ event_t::val_error,	{ state_t::failure,		BIND(array_parser::on_fail) } },
  		} },
 		{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		BIND(array_parser::on_fail)	} },
@@ -145,16 +145,17 @@ array_parser::on_more(const unsigned& c, const int pos)
 }
 
 result_t
-array_parser::on_new(const unsigned char& c, const int pos)
+array_parser::on_begin(const unsigned char& c, const int pos) 
 {
 	if (!m_value.has_value())
 		m_value.emplace();
 
-	const value val = m_value_parser->get();
+	return result_t::s_need_more;
+}
 
-	(*m_value).push_back(val);
-
-	m_value_parser->reset();
+result_t
+array_parser::on_new(const unsigned char& c, const int pos)
+{
 	return result_t::s_need_more;
 }
 
@@ -165,8 +166,24 @@ array_parser::on_val(const unsigned& c, const int pos)
 }
 
 result_t
+array_parser::on_got_val(const char& c, const int pos)
+{
+	assert(m_value.has_value());
+
+	const value val = m_value_parser->get();
+
+	(*m_value).push_back(val);
+
+	m_value_parser->reset();
+
+	return result_t::s_need_more;
+}
+
+result_t
 array_parser::on_done(const unsigned char& c, const int pos)
 {
+	assert(m_value.has_value());
+
 	return result_t::s_done;
 }
 

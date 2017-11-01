@@ -184,7 +184,9 @@ object_parser::on_begin(const char& c, const int pos)
 result_t 
 object_parser::on_new(const char& c, const int pos)
 {
-	reset();
+	m_key_parser->reset();
+	m_val_parser->reset();
+
 	return result_t::s_need_more;
 }
 

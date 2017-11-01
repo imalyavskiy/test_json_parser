@@ -54,9 +54,9 @@ namespace json
 			return std::string("unknown");
 		};
 
-#ifdef _DEBUG
-		std::cout << "number parser:\t" << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-#endif // _DEBUG
+		std::cout << "number parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
+		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
+
 		m_state = new_state;
 	}
 #endif // _DEBUG
