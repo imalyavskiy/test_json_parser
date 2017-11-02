@@ -159,20 +159,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="json_lib.h" />
     <ClInclude Include="parsers.h" />
-    <ClInclude Include="parser_array.h" />
-    <ClInclude Include="parser_base.h" />
-    <ClInclude Include="parser_bool.h" />
-    <ClInclude Include="parser_null.h" />
-    <ClInclude Include="parser_number.h" />
-    <ClInclude Include="parser_object.h" />
-    <ClInclude Include="parser_string.h" />
-    <ClInclude Include="parser_value.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="json_lib.cpp">
+    <ClCompile Include="parsers.cpp">
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</PrecompiledHeaderFile>
