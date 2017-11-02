@@ -1,12 +1,22 @@
 #ifndef __PARSERS_H__
 #define __PARSERS_H__
 
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <list>
 #include <map>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <string>
 #include <variant>
 #include <vector>
-#include <string>
-#include <sstream>
-#include <optional>
 
 #define json_failed(_x_) (int)_x_ < 0
 #define json_succeded(_x_) (int)_x_ >= 0
@@ -16,9 +26,11 @@
 namespace json
 {
 	/// Forward declaration for JSON object data structure
+	template <class StringT = std::string, class KeyT = StringT>
 	struct object_t;
 
 	/// Forward declaration for JSON array data structure
+	template <class StringT = std::string>
 	struct array_t;
 
 	/// possible results
@@ -32,7 +44,7 @@ namespace json
 		e_unexpected = -2,  // unexpected parameter value
 	};
 
-	template<typename StringT = std::string, typename ObjectT = object_t, typename ArrayT = array_t, typename IntNumT = int64_t, typename RealNumT = double, typename BooleanT = bool, typename NullT = nullptr_t>
+	template<class StringT = std::string, class ObjectT = object_t<StringT, StringT>, class ArrayT = array_t<StringT>, class IntNumT = int64_t, class RealNumT = double, class BooleanT = bool, class NullT = nullptr_t>
 	struct value_t
 		: public std::variant<StringT, ObjectT, ArrayT, IntNumT, RealNumT, BooleanT, NullT>
 	{
@@ -167,17 +179,78 @@ namespace json
 	};
 
 	/// Declaration of the object JSON data structure
-	struct object_t : public container<std::map<std::string, value>>
+	template <class StringT, class KeyT>
+	struct object_t : public container<std::map<StringT, value>>
 	{
 		/// {ctor}s
 		object_t() = default;
-		object_t(std::initializer_list<std::pair<std::string, value>> l);
+		object_t(std::initializer_list<std::pair<KeyT, value>> l);
 
 		/// serialization
-		virtual const std::string str(std::stringstream& str = std::stringstream()) final;
+		virtual const StringT str(std::stringstream& str = std::stringstream()) final;
 	};
 
+	template <class StringT, class KeyT>
+	object_t<StringT, KeyT>::object_t(std::initializer_list<std::pair<KeyT, value>> l)
+	{
+		for (auto arg : l)
+			insert(arg);
+	}
+
+	template <class StringT, class KeyT>
+	const StringT object_t<StringT, KeyT>::str(std::stringstream& str)
+	{
+		// leading curly brace
+		str << "{";
+
+		for (auto it = begin(); it != end(); ++it)
+		{
+			const bool last = (--end() == it);
+
+			// key
+			str << "\"" << it->first << "\":";
+
+			// value
+			switch ((vt)it->second.index())
+			{
+			case vt::t_string:
+				str << "\"" << std::get<StringT>(it->second) << "\"";
+				break;
+			case vt::t_object:
+				std::get<object_t>(it->second).str(str);
+				break;
+			case vt::t_array:
+				std::get<array_t<StringT>>(it->second).str(str);
+				break;
+			case vt::t_int64:
+				str << std::get<int64_t>(it->second);
+				break;
+			case vt::t_floatingpt:
+				str << std::scientific << std::get<double>(it->second);
+				break;
+			case vt::t_boolean:
+				str << (std::get<bool>(it->second) ? "true" : "false");
+				break;
+			case vt::t_null:
+				str << "null";
+				break;
+			default: // unknown(i.e. not mentioned) type
+				assert(0);
+				break;
+			}
+
+			// comma if not the last one
+			str << (last ? "" : ",");
+		}
+
+		// trailing curly brace
+		str << "}";
+
+		return str.str();
+	}
+
 	/// Declaration of the array JSON data structure
+	template <class StringT>
 	struct array_t : public container<std::vector<value>>
 	{
 		/// {ctor}s
@@ -185,8 +258,65 @@ namespace json
 		array_t(std::initializer_list<value> l);
 
 		/// serialization
-		virtual const std::string str(std::stringstream& str = std::stringstream()) final;
+		virtual const StringT str(std::stringstream& str = std::stringstream()) final;
 	};
+
+	template <class StringT>
+	array_t<StringT>::array_t(std::initializer_list<value> l)
+	{
+		for (auto arg : l)
+			push_back(arg);
+	}
+
+	template <class StringT>
+	const StringT array_t<StringT>::str(std::stringstream& str)
+	{
+		// leading curly brace
+		str << "[";
+
+		for (auto it = begin(); it != end(); ++it)
+		{
+			const bool last = (--end() == it);
+
+			// value
+			switch ((vt)it->index())
+			{
+			case vt::t_string:
+				str << "\"" << std::get<std::string>(*it) << "\"";
+				break;
+			case vt::t_object:
+				std::get<object_t<StringT, StringT>>(*it).str(str);
+				break;
+			case vt::t_array:
+				std::get<array_t>(*it).str(str);
+				break;
+			case vt::t_int64:
+				str << std::get<int64_t>(*it);
+				break;
+			case vt::t_floatingpt:
+				str << std::scientific << std::get<double>(*it);
+				break;
+			case vt::t_boolean:
+				str << ((std::get<bool>(*it) ? "true" : "false"));
+				break;
+			case vt::t_null:
+				str << "null";
+				break;
+			default:
+				assert(0);
+				break;
+			}
+
+			// comma if not the last one
+			str << (last ? "" : ",");
+		}
+
+		// trailing curly brace
+		str << "]";
+
+		return str.str();
+	}
+
 //
 #pragma region -- parser_base -- 
 #pragma region -- state machine types --
@@ -1317,7 +1447,7 @@ namespace json
 		using event_t = e_array_events;
 		using state_t = e_array_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = array_t;
+		using my_value_t = array_t<>;
 	public:
 		array_parser()
 			: m_value_parser(create_value_parser())
@@ -1495,7 +1625,7 @@ namespace json
 
 		parser::ptr m_value_parser;
 
-		std::optional<array_t> m_value;
+		std::optional<array_t<>> m_value;
 	};
 #pragma endregion
 //
@@ -1535,7 +1665,7 @@ namespace json
 		using event_t = e_object_events;
 		using state_t = e_object_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = object_t;
+		using my_value_t = object_t<std::string>;
 	public:
 		// {ctor}
 		object_parser()

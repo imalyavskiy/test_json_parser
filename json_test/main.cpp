@@ -38,7 +38,7 @@ void print_symbol(const unsigned char& c)
 }
 
 json::result_t
-process(/*const */std::istream& input, json::object_t& jsobj)
+process(/*const */std::istream& input, json::object_t<>& jsobj)
 {
 	char c = 0;
 	json::result_t result = json::result_t::s_ok;
@@ -68,7 +68,7 @@ process(/*const */std::istream& input, json::object_t& jsobj)
 			//std::cout << "Success" << std::endl;
 
 			json::value val = p->get();
-			json::object_t obj = std::get<json::object_t>(val);
+			json::object_t<> obj = std::get<json::object_t<>>(val);
 
 			std::cout << obj.str() << std::endl;
 
@@ -80,7 +80,7 @@ process(/*const */std::istream& input, json::object_t& jsobj)
 }
 
 json::result_t
-process(const std::string& input, json::object_t& jsobj)
+process(const std::string& input, json::object_t<>& jsobj)
 {
 	std::stringstream sstr;
 	sstr.str(input);
@@ -96,7 +96,7 @@ int parser_main(int argc, char** argv)
 		return (int)res;
 
 	std::ifstream source_file(source_file_name, std::ios::in);
-	json::object_t jsobj;
+	json::object_t<> jsobj;
 	res = process(source_file, jsobj);
 
 	source_file.close();
@@ -133,8 +133,8 @@ int parser_main(int argc, char** argv)
 */
 const std::string& json_data_structure_2(std::string& str)
 {
-	using obj = json::object_t;
-	using arr = json::array_t;
+	using obj = json::object_t<>;
+	using arr = json::array_t<>;
 
 	auto glossary = obj
 	{
@@ -172,7 +172,7 @@ const std::string& json_data_structure_2(std::string& str)
 
 const std::string& json_data_structure_1(std::string& str)
 {
-	json::array_t GlossSeeAlso;
+	json::array_t<> GlossSeeAlso;
 	GlossSeeAlso.push_back("GML");
 	GlossSeeAlso.push_back("XML");
 	GlossSeeAlso.push_back(true);
@@ -181,11 +181,11 @@ const std::string& json_data_structure_1(std::string& str)
 	GlossSeeAlso.push_back((int64_t)-1);
 	GlossSeeAlso.push_back((int64_t)100);
 
-	json::object_t GlossDef;
+	json::object_t<> GlossDef;
 	GlossDef["GlossDef"] = std::string("A meta-markup language, used to create markup languages such as DocBook.");
 	GlossDef["GlossSeeAlso"] = GlossSeeAlso;
 
-	json::object_t GlossEntry;
+	json::object_t<> GlossEntry;
 	GlossEntry["ID"] = std::string("SGML");
 	GlossEntry["SortAs"] = std::string("SGML");
 	GlossEntry["GlossTerm"] = std::string("Standard Generalized Markup Language");
@@ -193,14 +193,14 @@ const std::string& json_data_structure_1(std::string& str)
 	GlossEntry["Abbrev"] = std::string("ISO 8879:1986");
 	GlossEntry["GlossDef"] = GlossDef;
 
-	json::object_t GlossList;
+	json::object_t<> GlossList;
 	GlossList["GlossEntry"] = GlossEntry;
 
-	json::object_t GlossDiv;
+	json::object_t<> GlossDiv;
 	GlossDiv["title"] = std::string("S");
 	GlossDiv["GlossList"] = GlossList;
 
-	json::object_t glossary;
+	json::object_t<> glossary;
 	glossary["title"] = std::string("example glossary");
 	glossary["GlossDiv"] = GlossDiv;
 
