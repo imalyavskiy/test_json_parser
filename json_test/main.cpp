@@ -51,7 +51,7 @@ process(/*const */std::istream& input, json::object_t& jsobj)
 
 	while (input >> std::noskipws >> c || result != json::result_t::s_done)
 	{
-		print_symbol(c);
+		//print_symbol(c);
 
 		pos = (int)input.tellg() - 1;
 
@@ -65,7 +65,7 @@ process(/*const */std::istream& input, json::object_t& jsobj)
 
 		if(json::result_t::s_done == result)
 		{
-			std::cout << "Success" << std::endl;
+			//std::cout << "Success" << std::endl;
 
 			json::value val = p->get();
 			json::object_t obj = std::get<json::object_t>(val);
