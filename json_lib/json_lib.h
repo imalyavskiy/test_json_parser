@@ -160,7 +160,7 @@ namespace json
 		container() = default;
 		container(std::initializer_list<value> l) : BaseType(l) {}
 
-		virtual const std::string& str(std::string& str) = 0;
+		virtual const std::string str(std::stringstream& str = std::stringstream()) = 0;
 	};
 
 	/// Declaration of the object JSON data structure
@@ -171,7 +171,7 @@ namespace json
 		object_t(std::initializer_list<std::pair<std::string, value>> l);
 
 		/// serialization
-		virtual const std::string& str(std::string& str = std::string()) final;
+		virtual const std::string str(std::stringstream& str = std::stringstream()) final;
 	};
 
 	/// Declaration of the array JSON data structure
@@ -182,7 +182,7 @@ namespace json
 		array_t(std::initializer_list<value> l);
 
 		/// serialization
-		virtual const std::string& str(std::string& str = std::string()) final;
+		virtual const std::string str(std::stringstream& str = std::stringstream()) final;
 	};
 }
 #endif // __JSON_LIB_H__

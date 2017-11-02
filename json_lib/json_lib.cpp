@@ -51,24 +51,24 @@ object_t::object_t(std::initializer_list<std::pair<std::string, value>> l)
 		insert(arg);
 }
 
-const std::string&
-object_t::str(std::string& str)
+const std::string
+object_t::str(std::stringstream& str)
 {
 	// leading curly brace
-	str += "{";
+	str << "{";
 
 	for (auto it = begin(); it != end(); ++it)
 	{
 		const bool last = (--end() == it);
 
 		// key
-		str += "\"" + it->first + "\":";
+		str << "\"" << it->first << "\":";
 
 		// value
 		switch ((vt)it->second.index())
 		{
 		case vt::t_string:
-			str += "\"" + std::get<std::string>(it->second) + "\"";
+			str << "\"" << std::get<std::string>(it->second) << "\"";
 			break;
 		case vt::t_object:
 			std::get<object_t>(it->second).str(str);
@@ -77,16 +77,16 @@ object_t::str(std::string& str)
 			std::get<array_t>(it->second).str(str);
 			break;
 		case vt::t_int64:
-			str += std::to_string(std::get<int64_t>(it->second));
+			str << std::get<int64_t>(it->second);
 			break;
 		case vt::t_floatingpt:
-			str += std::to_string(std::get<double>(it->second));
+			str << std::scientific << std::get<double>(it->second);
 			break;
 		case vt::t_boolean:
-			str += (std::get<bool>(it->second) ? "true" : "false");
+			str << (std::get<bool>(it->second) ? "true" : "false");
 			break;
 		case vt::t_null:
-			str += "null";
+			str << "null";
 			break;
 		default: // unknown(i.e. not mentioned) type
 			assert(0);
@@ -94,13 +94,13 @@ object_t::str(std::string& str)
 		}
 
 		// comma if not the last one
-		str += (last ? "" : ",") /*<< "\n"*/;
+		str << (last ? "" : ",");
 	}
 
 	// trailing curly brace
-	str += "}";
+	str << "}";
 
-	return str;
+	return str.str();
 }
 
 
@@ -110,11 +110,11 @@ array_t::array_t(std::initializer_list<value> l)
 		push_back(arg);
 }
 
-const std::string& 
-array_t::str(std::string& str) 
+const std::string 
+array_t::str(std::stringstream& str)
 {
 	// leading curly brace
-	str += "[";
+	str << "[";
 
 	for (auto it = begin(); it != end(); ++it)
 	{
@@ -124,7 +124,7 @@ array_t::str(std::string& str)
 		switch ((vt)it->index())
 		{
 		case vt::t_string:
-			str += "\"" + std::get<std::string>(*it) + "\"";
+			str << "\"" << std::get<std::string>(*it) << "\"";
 			break;
 		case vt::t_object:
 			std::get<object_t>(*it).str(str);
@@ -133,16 +133,16 @@ array_t::str(std::string& str)
 			std::get<array_t>(*it).str(str);
 			break;
 		case vt::t_int64:
-			str += std::to_string(std::get<int64_t>(*it));
+			str << std::get<int64_t>(*it);
 			break;
 		case vt::t_floatingpt:
-			str += std::to_string(std::get<double>(*it));
+			str << std::scientific << std::get<double>(*it);
 			break;
 		case vt::t_boolean:
-			str += (std::get<bool>(*it) ? "true" : "false");
+			str << ((std::get<bool>(*it) ? "true" : "false"));
 			break;
 		case vt::t_null:
-			str += "null";
+			str << "null";
 			break;
 		default:
 			assert(0);
@@ -150,11 +150,11 @@ array_t::str(std::string& str)
 		}
 
 		// comma if not the last one
-		str += (last ? "" : ",");
+		str << (last ? "" : ",");
 	}
 
 	// trailing curly brace
-	str += "]";
+	str << "]";
 
-	return str;
+	return str.str();
 }
