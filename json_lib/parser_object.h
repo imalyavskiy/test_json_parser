@@ -33,35 +33,6 @@ namespace json
 		nothing,		// no action event
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_object_states, e_object_states::initial>::set(e_object_states new_state)
-	{
-		auto state_2_string = [](e_object_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_object_states::initial:		return std::string("initial");
-			case e_object_states::key_before:	return std::string("key_before");
-			case e_object_states::key_inside:	return std::string("key_inside");
-			case e_object_states::key_after:	return std::string("key_after");
-			case e_object_states::val_before:	return std::string("val_before");
-			case e_object_states::val_inside:	return std::string("val_inside");
-			case e_object_states::val_after:	return std::string("val_after");
-			case e_object_states::done:			return std::string("done");
-			case e_object_states::failure:		return std::string("failure");
-			}
-
-			return std::string("unknown");
-		};
-
-		std::cout << "object parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class object_parser
 		: public parser_impl<e_object_events, e_object_states, e_object_states::initial>
 	{
@@ -72,9 +43,6 @@ namespace json
 	public:
 		// {ctor}
 		object_parser();
-
-		// {dtor}
-		~object_parser();
 
 	protected:
 		// inherited via parser

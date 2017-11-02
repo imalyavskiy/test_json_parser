@@ -18,30 +18,6 @@ namespace json
 		nothing,
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_value_states, e_value_states::initial>::set(e_value_states new_state)
-	{
-		auto state_2_string = [](e_value_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_value_states::initial:	return std::string("initial");
-			case e_value_states::read:		return std::string("read");
-			case e_value_states::done:		return std::string("done");
-			case e_value_states::failure:	return std::string("failure");
-			}
-			
-			return std::string("unknown");
-		};
-
-		std::cout << "value parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class value_parser
 		: public parser_impl<e_value_events, e_value_states, e_value_states::initial>
 	{
@@ -52,7 +28,6 @@ namespace json
 		using my_value_t			= value_t<>;
 	public:
 		value_parser();
-		~value_parser();
 
 	protected:
 		// Inherited via parser

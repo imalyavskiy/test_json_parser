@@ -50,37 +50,6 @@ namespace json
 		alpha_u			= 0x75,
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_string_states, e_string_states::initial>::set(e_string_states new_state)
-	{
-		auto state_2_string = [](e_string_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_string_states::initial:		return std::string("initial");
-			case e_string_states::inside:		return std::string("inside");
-			case e_string_states::escape:		return std::string("escape");
-			case e_string_states::cr:			return std::string("cr");
-			case e_string_states::lf:			return std::string("lf");
-			case e_string_states::unicode_1:	return std::string("unicode_1");
-			case e_string_states::unicode_2:	return std::string("unicode_2");
-			case e_string_states::unicode_3:	return std::string("unicode_3");
-			case e_string_states::unicode_4:	return std::string("unicode_4");
-			case e_string_states::done:			return std::string("done");
-			case e_string_states::failure:		return std::string("failure");
-			}
-			
-			return std::string("unknown");
-		};
-
-		std::cout << "string parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class string_parser
 		: public parser_impl<e_string_events, e_string_states, e_string_states::initial>
 	{
@@ -91,7 +60,6 @@ namespace json
 		using my_value_t			= std::string;
 
 		string_parser();
-		~string_parser();
 
 	protected:
 		// Inherited via parser

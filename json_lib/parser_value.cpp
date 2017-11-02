@@ -18,24 +18,12 @@ value_parser::value_parser()
 {
 }
 
-value_parser::~value_parser()
-{
-}
-
 void 
 value_parser::reset()
 {
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-
 	state::set(state_t::initial);
 	for (ParserItem_t& p : parsing_unit)
 		p.first = true, p.second->reset();
-
-#ifdef _DEBUG
-	std::cout << "<<< end reset" << std::endl;
-#endif // _DEBUG
 }
 
 result_t

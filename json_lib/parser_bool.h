@@ -30,36 +30,6 @@ namespace json
 		symbol = 0xff,
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_bool_states, e_bool_states::initial>::set(e_bool_states new_state)
-	{
-		auto state_2_string = [](e_bool_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_bool_states::initial:	return std::string("initial");
-			case e_bool_states::got_t:		return std::string("got_t");
-			case e_bool_states::got_r:		return std::string("got_r");
-			case e_bool_states::got_u:		return std::string("got_u");
-			case e_bool_states::got_f:		return std::string("got_f");
-			case e_bool_states::got_a:		return std::string("got_a");
-			case e_bool_states::got_l:		return std::string("got_l");
-			case e_bool_states::got_s:		return std::string("got_s");
-			case e_bool_states::done:		return std::string("done");
-			case e_bool_states::failure:	return std::string("failure");
-			}
-
-			return std::string("unknown");
-		};
-
-		std::cout << "bool parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class bool_parser
 		: public parser_impl<e_bool_events, e_bool_states, e_bool_states::initial>
 	{
@@ -69,7 +39,6 @@ namespace json
 		using my_value_t			= bool;
 	public:
 		bool_parser();
-		~bool_parser();
 
 	protected:
 		// Inherited via parser

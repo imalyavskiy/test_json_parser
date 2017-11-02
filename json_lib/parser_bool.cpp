@@ -38,10 +38,6 @@ bool_parser::bool_parser()
 {
 }
 
-bool_parser::~bool_parser()
-{
-}
-
 void
 bool_parser::reset()
 {

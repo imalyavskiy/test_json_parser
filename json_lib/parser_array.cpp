@@ -31,26 +31,14 @@ array_parser::array_parser()
 {
 }
 
-array_parser::~array_parser()
-{
-}
-
 void 
 array_parser::reset()
 {
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-	
 	state::set(state_t::initial);
 	
 	m_value_parser->reset();
 
 	m_value.reset();
-	
-#ifdef _DEBUG
-	std::cout << ">>> end reset" << std::endl;
-#endif // _DEBUG
 }
 
 value

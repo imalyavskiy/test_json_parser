@@ -49,10 +49,6 @@ string_parser::string_parser()
 {
 }
 
-string_parser::~string_parser()
-{
-}
-
 void 
 string_parser::reset()
 {

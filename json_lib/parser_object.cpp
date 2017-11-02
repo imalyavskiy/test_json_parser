@@ -43,27 +43,15 @@ object_parser::object_parser()
 {
 }
 
-object_parser::~object_parser()
-{
-}
-
 void 
 object_parser::reset()
 {
-#ifdef _DEBUG
-	std::cout << ">>> begin reset" << std::endl;
-#endif // _DEBUG
-	
 	state::set(state_t::initial);
 	
 	m_key_parser->reset();
 	m_val_parser->reset();
 
 	m_value.reset();
-	
-#ifdef _DEBUG
-	std::cout << ">>> end reset" << std::endl;
-#endif // _DEBUG
 }
 
 result_t

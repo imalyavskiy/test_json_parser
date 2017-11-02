@@ -53,10 +53,6 @@ number_parser::number_parser()
 {
 }
 
-number_parser::~number_parser()
-{
-}
-
 void 
 number_parser::reset()
 {

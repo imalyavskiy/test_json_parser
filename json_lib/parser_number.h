@@ -30,37 +30,6 @@ namespace json
 		symbol,
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_number_states, e_number_states::initial>::set(e_number_states new_state)
-	{
-		auto state_2_string = [](e_number_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_number_states::initial:			return std::string("initial");
-			case e_number_states::leading_minus:	return std::string("leading_minus");
-			case e_number_states::zero:				return std::string("zero");
-			case e_number_states::dot:				return std::string("dot");
-			case e_number_states::integer:			return std::string("integer");
-			case e_number_states::fractional:		return std::string("fractional");
-			case e_number_states::exponent_delim:	return std::string("exponent_delim");
-			case e_number_states::exponent_sign:	return std::string("exponent_sign");
-			case e_number_states::exponent_val:		return std::string("exponent_val");
-			case e_number_states::done:				return std::string("done");
-			case e_number_states::failure:			return std::string("failure");
-			}
-			
-			return std::string("unknown");
-		};
-
-		std::cout << "number parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class number_parser
 		: public parser_impl<e_number_events, e_number_states, e_number_states::initial>
 	{
@@ -71,7 +40,6 @@ namespace json
 
 	public:
 		number_parser();
-		~number_parser();
 
 	protected:
 		// Inherited via parser

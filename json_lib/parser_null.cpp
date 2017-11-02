@@ -25,10 +25,6 @@ null_parser::null_parser()
 {
 }
 
-null_parser::~null_parser()
-{
-}
-
 void 
 null_parser::reset()
 {

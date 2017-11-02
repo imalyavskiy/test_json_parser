@@ -22,31 +22,6 @@ namespace json
 		other	 = 0xff,
 	};
 
-#ifdef _DEBUG
-	template<>
-	void state<e_null_states, e_null_states::initial>::set(e_null_states new_state)
-	{
-		auto state_2_string = [](e_null_states s)->std::string
-		{
-			switch (s)
-			{
-			case e_null_states::initial:	return std::string("initial");
-			case e_null_states::got_n:		return std::string("got_n");
-			case e_null_states::got_u:		return std::string("got_u");
-			case e_null_states::got_l:		return std::string("got_l");
-			case e_null_states::done:		return std::string("done");
-			case e_null_states::failure:	return std::string("failure");
-			}
-			return std::string("unknown");
-		};
-
-		std::cout << "null parser(0x" << std::hex << std::setw(8) << std::setfill('0') << this << std::resetiosflags(std::ios_base::basefield) << "):\t";
-		std::cout << state_2_string(m_state) << " -> " << state_2_string(new_state) << std::endl;
-
-		m_state = new_state;
-	}
-#endif // _DEBUG
-
 	class null_parser
 		: public parser_impl<e_null_events, e_null_states, e_null_states::initial>
 	{
@@ -56,7 +31,6 @@ namespace json
 		using my_value_t			= nullptr_t;
 	public:
 		null_parser();
-		~null_parser();
 
 	protected:
 		// Inherited via parser
