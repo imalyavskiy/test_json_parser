@@ -90,14 +90,14 @@ namespace json
 		result_t on_integer(const unsigned char& c, const int pos);
 		result_t on_fractional(const unsigned char& c, const int pos);
 		result_t on_exponent(const unsigned char& c, const int pos);
-		result_t on_exponent_sign(const unsigned char& c, const int pos);
-		result_t on_exponent_value(const unsigned char& c, const int pos);
+		result_t on_exp_sign(const unsigned char& c, const int pos);
+		result_t on_exp_value(const unsigned char& c, const int pos);
 		result_t on_zero(const unsigned char& c, const int pos);
 		result_t on_dot(const unsigned char& c, const int pos);
 		result_t on_done(const unsigned char& c, const int pos);
 		result_t on_fail(const unsigned char& c, const int pos);
 
-		static result_t append_digit(int& val, const unsigned char& c);
+		static result_t append_digit(uint32_t& val, const unsigned char& c);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -107,18 +107,19 @@ namespace json
 			number()
 			: m_positive(true)
 			, m_integer(0)
-			, m_fractional(0)
+			, m_fractional_value(0)
 			, m_has_exponent(false)
 			, m_exponent_positive(true)
 			, m_exponent_value(0)
 			{}
 
-			bool m_positive;
-			int  m_integer;
-			int  m_fractional;
-			bool m_has_exponent;
-			bool m_exponent_positive;
-			int  m_exponent_value;
+			bool		m_positive;
+			uint32_t	m_integer;
+			uint32_t	m_fractional_value;
+			uint32_t	m_fractional_digits;
+			bool		m_has_exponent;
+			bool		m_exponent_positive;
+			uint32_t	m_exponent_value;
 		};
 
 		std::optional<number> m_value;
