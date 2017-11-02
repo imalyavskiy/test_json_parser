@@ -165,7 +165,7 @@ const std::string& json_data_structure_2(std::string& str)
 		}}
 	};
 
-	std::cout << glossary.str(str) << std::endl;
+	std::cout << glossary.str() << std::endl;
 
 	return str;
 }
@@ -204,7 +204,7 @@ const std::string& json_data_structure_1(std::string& str)
 	glossary["title"] = std::string("example glossary");
 	glossary["GlossDiv"] = GlossDiv;
 
-	std::cout << glossary.str(str) << std::endl;
+	std::cout << glossary.str() << std::endl;
 
 	return str;
 }
