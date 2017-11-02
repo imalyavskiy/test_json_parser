@@ -121,22 +121,22 @@ namespace json
 	};
 
 	/// creates object parser
-	parser::ptr create_object_parser();
+	static parser::ptr create_object_parser();
 
 	/// creates array parser
-	parser::ptr create_array_parser();
+	static parser::ptr create_array_parser();
 
 	/// creates number parser
-	parser::ptr create_number_parser();
+	static parser::ptr create_number_parser();
 
 	/// creates string parser
-	parser::ptr create_string_parser();
+	static parser::ptr create_string_parser();
 
 	/// creates null parser
-	parser::ptr create_null_parser();
+	static parser::ptr create_null_parser();
 
 	/// creates bool parser
-	parser::ptr create_bool_parser();
+	static parser::ptr create_bool_parser();
 
 	/// creates value parser
 	parser::ptr create_value_parser();
@@ -1750,6 +1750,49 @@ namespace json
 		std::optional<my_value_t> m_value;
 	};
 #pragma endregion
+
+	/// creates object parser
+	static parser::ptr create_object_parser()
+	{
+		return json::parser::ptr(new object_parser());
+	}
+
+	/// creates array parser
+	static parser::ptr create_array_parser()
+	{
+		return json::parser::ptr(new array_parser());
+	}
+
+	/// creates number parser
+	static parser::ptr create_number_parser()
+	{
+		return json::parser::ptr(new number_parser());
+	}
+
+	/// creates string parser
+	static parser::ptr create_string_parser()
+	{
+		return json::parser::ptr(new string_parser());
+	}
+
+	/// creates null parser
+	static parser::ptr create_null_parser()
+	{
+		return json::parser::ptr(new null_parser());
+	}
+
+	/// creates bool parser
+	static parser::ptr create_bool_parser()
+	{
+		return json::parser::ptr(new bool_parser());
+	}
+
+	/// creates value parser
+	static parser::ptr create_value_parser()
+	{
+		return json::parser::ptr(new value_parser());
+	}
+
 }
 
 #endif // __PARSERS_H__
