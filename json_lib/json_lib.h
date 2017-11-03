@@ -1,5 +1,7 @@
-#ifndef __PARSERS_H__
-#define __PARSERS_H__
+#ifndef __JSON_LIB_H__
+#define __JSON_LIB_H__
+
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -18,11 +20,6 @@
 #include <variant>
 #include <vector>
 
-#define json_failed(_x_) (int)_x_ < 0
-#define json_succeded(_x_) (int)_x_ >= 0
-
-#define BIND(__CLASS_METHOD__) std::bind(&__CLASS_METHOD__, this, std::placeholders::_1, std::placeholders::_2)
-
 namespace json
 {
 	/// Forward declaration for JSON object data structure
@@ -36,14 +33,18 @@ namespace json
 	/// possible results
 	enum class result_t
 	{
-		s_need_more = 3,	// need more data
-		s_done_rpt = 2,		// symbol succesfully terminates parsing but makes no sense to current parser, put it once again to above parser
-		s_done = 1,			// symbol succesfully terminates parsing and makes sense to current parser
-		s_ok = 0,			// general success
-		e_fatal = -1,		// general failure
-		e_unexpected = -2,  // unexpected parameter value
+		s_need_more		=  3, // need more data
+		s_done_rpt		=  2, // symbol succesfully terminates parsing but makes no sense to current parser, put it once again to above parser
+		s_done			=  1, // symbol succesfully terminates parsing and makes sense to current parser
+		s_ok			=  0, // general success
+		e_fatal			= -1, // general failure
+		e_unexpected	= -2, // unexpected parameter value
 	};
 
+	inline bool json_failed(const result_t& r) { return r < result_t::s_ok; }
+	inline bool json_succeded(const result_t& r) { return r >= result_t::s_ok; }
+
+#pragma region -- value definition --
 	template<class StringT = std::string, class ObjectT = object_t<StringT, StringT>, class ArrayT = array_t<StringT>, class IntNumT = int64_t, class RealNumT = double, class BooleanT = bool, class NullT = nullptr_t>
 	struct value_t
 		: public std::variant<StringT, ObjectT, ArrayT, IntNumT, RealNumT, BooleanT, NullT>
@@ -58,7 +59,7 @@ namespace json
 		value_t(const IntNumT	other) : base_t(other) {}
 		value_t(const RealNumT other) : base_t(other) {}
 		value_t(const BooleanT other) : base_t(other) {}
-		value_t(const char* other) : base_t(std::string(other)) {}
+		value_t(const char* other) : base_t(StringT(other)) {}
 		value_t(const NullT other) : base_t(other) {}
 
 		/// Assign operators
@@ -100,7 +101,7 @@ namespace json
 
 		const value_t& operator=(const char* other)
 		{
-			base_t::operator=(std::string(other));
+			base_t::operator=(StringT(other));
 			return (*this);
 		}
 
@@ -114,52 +115,16 @@ namespace json
 
 	/// Shortening
 	using value = value_t<>;
-
-	/// Common parser interface
-	struct parser
-	{
-		typedef std::shared_ptr<parser> ptr;
-
-		virtual ~parser() {};
-
-		/// Drops the internal state to initial(i.e. as just constructed)
-		virtual void		reset() = 0;
-
-		/// Puts a character to the parsing routine
-		virtual result_t	putchar(const char& c, const int pos) = 0;
-
-		/// Retrieves the parsing result
-		virtual value		get() const = 0;
-	};
-
-	/// creates object parser
-	static parser::ptr create_object_parser();
-
-	/// creates array parser
-	static parser::ptr create_array_parser();
-
-	/// creates number parser
-	static parser::ptr create_number_parser();
-
-	/// creates string parser
-	static parser::ptr create_string_parser();
-
-	/// creates null parser
-	static parser::ptr create_null_parser();
-
-	/// creates bool parser
-	static parser::ptr create_bool_parser();
-
-	/// creates value parser
-	parser::ptr create_value_parser();
-
+#pragma endregion
+//
+#pragma region -- parser interface --
 	template<class BaseType>
 	struct container
 		: public BaseType
 	{
 		using base_t = BaseType;
 
-		/// The enumaration for mnemonic correlation of indeces and types used for std::variant
+		/// The enumeration for mnemonic correlation of indeces and types used for std::variant
 		enum class vt
 		{	/// IMPORTANT: The order of parameters is the same as value_t template parameters order
 			t_string = 0,
@@ -316,7 +281,23 @@ namespace json
 
 		return str.str();
 	}
+	/// Common parser interface
+	struct parser
+	{
+		typedef std::shared_ptr<parser> ptr;
 
+		virtual ~parser() {};
+
+		/// Drops the internal state to initial(i.e. as just constructed)
+		virtual void		reset() = 0;
+
+		/// Puts a character to the parsing routine
+		virtual result_t	putchar(const char& c, const int pos) = 0;
+
+		/// Retrieves the parsing result
+		virtual value		get() const = 0;
+	};
+#pragma endregion
 //
 #pragma region -- parser_base -- 
 #pragma region -- state machine types --
@@ -388,8 +369,8 @@ namespace json
 		virtual const StateTable_t& table() = 0;
 	};
 #pragma endregion
-//
-#pragma region -- parser_string -- 
+//////////////////////////////////////////////////////////////////////////
+#pragma region -- string parser declaration -- 
 	enum class e_string_states
 	{
 		initial,	// wait for " and skipping space charscters - space, hrisontal tab, crlf, lf
@@ -420,195 +401,98 @@ namespace json
 		alpha_u,	// stands for unicode
 	};
 
-	class string_parser
+	template <class StringT = std::string>
+	class string_parser_t
 		: public parser_impl<e_string_events, e_string_states, e_string_states::initial>
 	{
 	public:
+		using string_t				= StringT;
 		using event_t				= e_string_events;
 		using state_t				= e_string_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
 		using my_value_t			= std::string;
 
-		string_parser()
+		string_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,		{	{ event_t::quote,		{ state_t::inside,		BIND(string_parser::on_initial)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::initial,		{	{ event_t::quote,		{ state_t::inside,		std::bind(&string_parser_t::on_initial,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::inside,		{	{ event_t::quote,		{ state_t::done,		BIND(string_parser::on_done)	} },
-										{ event_t::back_slash,	{ state_t::escape,		BIND(string_parser::on_escape)	} },
-										{ event_t::symbol,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
+			{ state_t::inside,		{	{ event_t::quote,		{ state_t::done,		std::bind(&string_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::back_slash,	{ state_t::escape,		std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::escape,		{	{ event_t::quote,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::back_slash,	{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::slash,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::alpha_b,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::alpha_f,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::alpha_n,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::alpha_r,		{ state_t::cr,			BIND(string_parser::on_escape)	} },
-										{ event_t::alpha_t,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::alpha_u,		{ state_t::unicode_1,	BIND(string_parser::on_unicode)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::escape,		{	{ event_t::quote,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::back_slash,	{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::slash,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_b,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_f,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_n,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_r,		{ state_t::cr,			std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_t,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::alpha_u,		{ state_t::unicode_1,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::cr,			{	{ event_t::back_slash,	{ state_t::lf,			BIND(string_parser::on_escape)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::cr,			{	{ event_t::back_slash,	{ state_t::lf,			std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::lf,			{	{ event_t::alpha_n,		{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::lf,			{	{ event_t::alpha_n,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::unicode_1,	{	{ event_t::hex_digit,	{ state_t::unicode_2,	BIND(string_parser::on_unicode)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::unicode_1,	{	{ event_t::hex_digit,	{ state_t::unicode_2,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::unicode_2,	{	{ event_t::hex_digit,	{ state_t::unicode_3,	BIND(string_parser::on_unicode)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::unicode_2,	{	{ event_t::hex_digit,	{ state_t::unicode_3,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::unicode_3,	{	{ event_t::hex_digit,	{ state_t::unicode_4,	BIND(string_parser::on_unicode) } },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::unicode_3,	{	{ event_t::hex_digit,	{ state_t::unicode_4,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::unicode_4,	{	{ event_t::hex_digit,	{ state_t::inside,		BIND(string_parser::on_inside)	} },
-										{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::unicode_4,	{	{ event_t::hex_digit,	{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		BIND(string_parser::on_fail)	} },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 		} {};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
-			m_value.reset();
-		};
+		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			return parser_impl::step(to_event(c), c, pos);
-		};
+		virtual result_t putchar(const char& c, const int pos) final;
 
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-				return *m_value;
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			event_t smb = event_t::symbol;
-			switch (state::get())
-			{
-			case state_t::initial:
-				if (0x22 == c)
-					smb = event_t::quote;
-				break;
-			case state_t::inside:
-				if (0x5C == c)
-					smb = event_t::back_slash;
-				if (0x22 == c)
-					smb = event_t::quote;
-				break;
-			case state_t::escape:
-				switch (c)
-				{
-				case 0x22:	smb = event_t::quote;		break;
-				case 0x5C:	smb = event_t::back_slash;	break;
-				case 0x2F:	smb = event_t::slash;		break;
-				case 0x62:	smb = event_t::alpha_b;		break;
-				case 0x66:	smb = event_t::alpha_f;		break;
-				case 0x6E:	smb = event_t::alpha_n;		break;
-				case 0x72:	smb = event_t::alpha_r;		break;
-				case 0x74:	smb = event_t::alpha_t;		break;
-				case 0x75:	smb = event_t::alpha_u;		break;
-				}
-				break;
-			case state_t::cr:
-				if (0x5C == c)
-					return event_t::back_slash;
-				break;
-			case state_t::lf:
-				if (0x6E == c)
-					return event_t::alpha_n;
-				break;
-			case state_t::unicode_1:
-			case state_t::unicode_2:
-			case state_t::unicode_3:
-			case state_t::unicode_4:
-				if (0x30 <= c && c <= 0x39)
-					smb = event_t::hex_digit;
-				if (0x41 <= c && c <= 0x46)
-					smb = event_t::hex_digit;
-				if (0x61 <= c && c <= 0x66)
-					smb = event_t::hex_digit;
-				break;
-			case state_t::done:
-				assert(0);
-				break;
-			}
+		virtual event_t to_event(const char& c) const override;
 
-			return smb;
-		};
-
-		virtual event_t to_event(const result_t& c) const override
-		{
-			return event_t::symbol;
-		};
+		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_initial(const char&c, const int pos)
-		{
-			return result_t::s_need_more;
-		}
+		result_t on_initial(const char&c, const int pos);
 
-		result_t on_inside(const char&c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_inside(const char&c, const int pos);
 
-			(*m_value) += c;
+		result_t on_escape(const char&c, const int pos);
 
-			return result_t::s_need_more;
-		}
+		result_t on_unicode(const char&c, const int pos);
 
-		result_t on_escape(const char&c, const int pos)
-		{
-			assert(m_value.has_value());
-			(*m_value) += c;
-			return result_t::s_need_more;
-		}
+		result_t on_done(const char&c, const int pos);
 
-		result_t on_unicode(const char&c, const int pos)
-		{
-			assert(m_value.has_value());
-			(*m_value) += c;
-			return result_t::s_need_more;
-		}
-
-		result_t on_done(const char&c, const int pos)
-		{
-			return result_t::s_done;
-		}
-
-		result_t on_fail(const char&c, const int pos)
-		{
-			return result_t::e_unexpected;
-		}
+		result_t on_fail(const char&c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
 		 std::optional<my_value_t> m_value;
 	};
-
 #pragma endregion
 //
-#pragma region -- parser_number -- 
+#pragma region -- number parser declaration -- 
 	enum class e_number_states
 	{
 		initial,
@@ -636,271 +520,106 @@ namespace json
 		symbol,
 	};
 
-	class number_parser
+	template <class StringT = std::string>
+	class number_parser_t
 		: public parser_impl<e_number_events, e_number_states, e_number_states::initial>
 	{
+		using string_t = StringT;
 		using event_t = e_number_events;
 		using state_t = e_number_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
 		using my_value_t = std::variant<int64_t, uint64_t, int32_t, uint32_t, int16_t, uint16_t, int8_t, uint8_t, double, float>;
-
+		
 	public:
-		number_parser()
+		number_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::minus,{ state_t::leading_minus,	BIND(number_parser::on_minus) } },
-			{ event_t::dec_zero,{ state_t::zero,			BIND(number_parser::on_zero) } },
-			{ event_t::dec_digit,{ state_t::integer,			BIND(number_parser::on_integer) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::initial,			{	{ event_t::minus,		{ state_t::leading_minus,	std::bind(&number_parser_t::on_minus,		this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_zero,	{ state_t::zero,			std::bind(&number_parser_t::on_zero,		this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::leading_minus,{ { event_t::dec_zero,{ state_t::zero,			BIND(number_parser::on_zero) } },
-			{ event_t::dec_digit,{ state_t::integer,			BIND(number_parser::on_integer) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::leading_minus,	{	{ event_t::dec_zero,	{ state_t::zero,			std::bind(&number_parser_t::on_zero,		this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::zero,{ { event_t::dot,{ state_t::dot,				BIND(number_parser::on_dot) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::zero,			{	{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::dot,{ { event_t::dec_zero,{ state_t::fractional,		BIND(number_parser::on_fractional) } },
-			{ event_t::dec_digit,{ state_t::fractional,		BIND(number_parser::on_fractional) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::dot,				{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::integer,{ { event_t::dec_zero,{ state_t::integer,			BIND(number_parser::on_integer) } },
-			{ event_t::dec_digit,{ state_t::integer,			BIND(number_parser::on_integer) } },
-			{ event_t::dot,{ state_t::dot,				BIND(number_parser::on_dot) } },
-			{ event_t::symbol,{ state_t::done,			BIND(number_parser::on_done) } },
+			{ state_t::integer,			{	{ event_t::dec_zero,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::fractional,{ { event_t::dec_zero,{ state_t::fractional,		BIND(number_parser::on_fractional) } },
-			{ event_t::dec_digit,{ state_t::fractional,		BIND(number_parser::on_fractional) } },
-			{ event_t::exponent,{ state_t::exponent_delim,	BIND(number_parser::on_exponent) } },
-			{ event_t::symbol,{ state_t::done,			BIND(number_parser::on_done) } },
+			{ state_t::fractional,		{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::exponent,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exponent,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::exponent_delim,{ { event_t::minus,{ state_t::exponent_sign,	BIND(number_parser::on_exp_sign) } },
-			{ event_t::plus,{ state_t::exponent_sign,	BIND(number_parser::on_exp_sign) } },
-			{ event_t::dec_zero,{ state_t::exponent_delim,	BIND(number_parser::on_exp_value) } },
-			{ event_t::dec_digit,{ state_t::exponent_delim,	BIND(number_parser::on_exp_value) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::exponent_delim,	{	{ event_t::minus,		{ state_t::exponent_sign,	std::bind(&number_parser_t::on_exp_sign,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::plus,		{ state_t::exponent_sign,	std::bind(&number_parser_t::on_exp_sign,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_zero,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::exponent_sign,{ { event_t::dec_zero,{ state_t::exponent_val,	BIND(number_parser::on_exp_value) } },
-			{ event_t::dec_digit,{ state_t::exponent_val,	BIND(number_parser::on_exp_value) } },
-			{ event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::exponent_sign,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::exponent_val,{ { event_t::dec_zero,{ state_t::exponent_val,	BIND(number_parser::on_exp_value) } },
-			{ event_t::dec_digit,{ state_t::exponent_val,	BIND(number_parser::on_exp_value) } },
-			{ event_t::symbol,{ state_t::done,			BIND(number_parser::on_done) } },
+			{ state_t::exponent_val,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::done,			{	{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::symbol,{ state_t::failure,			BIND(number_parser::on_fail) } },
+			{ state_t::failure,			{	{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
+		virtual void reset() final;
 
-			m_value.reset();
-		};
+		virtual result_t putchar(const char& c, const int pos) final;
 
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			return parser_impl::step(to_event(c), c, pos);
-		};
-
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-			{
-				value val;
-				const number& num = (*m_value);
-				// contruct decimal fraction
-				if (num.m_fractional_value > 0)
-				{
-					// 1. put fractional part and shift all it's digits to the right
-					// 2. add integer part
-					double result = ((double)num.m_fractional_value) / pow(10, num.m_fractional_digits) + num.m_integer;
-					// 3. apply power
-					const uint32_t power = (uint32_t)pow(10, num.m_exponent_value);
-					if (num.m_has_exponent)
-						result = num.m_exponent_positive ? result * power : result / power;
-					// 4. apply sign
-					val = (num.m_positive ? 1.0 : -1.0) * result;
-				}
-				else
-				{
-					int64_t i64 = num.m_integer;
-					if (!num.m_positive)
-						i64 *= -1;
-					val = i64;
-				}
-
-				return val;
-			}
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			if (0x2D == c)
-				return event_t::minus;
-			if (0x2B == c)
-				return event_t::plus;
-			if (0x30 == c)
-				return event_t::dec_zero;
-			if (0x2E == c)
-				return event_t::dot;
-			if (0x45 == c || 0x65 == c)
-				return event_t::exponent;
-			if (0x31 <= c && c <= 0x39)
-				return event_t::dec_digit;
+		virtual event_t to_event(const char& c) const override;
 
-			return event_t::symbol;
-		};
-
-		virtual event_t to_event(const result_t& c) const override
-		{
-			return event_t::symbol;
-		};
+		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_initial(const unsigned char& c, const int pos)
-		{
-			// TODO: use symbol
-			return result_t::s_need_more;
-		}
+		result_t on_initial(const unsigned char& c, const int pos);
 
-		result_t on_minus(const unsigned char& c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_minus(const unsigned char& c, const int pos);
 
-			(*m_value).m_positive = false;
+		result_t on_integer(const unsigned char& c, const int pos);
 
-			return result_t::s_need_more;
-		}
+		result_t on_fractional(const unsigned char& c, const int pos);
 
-		result_t on_integer(const unsigned char& c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_exponent(const unsigned char& c, const int pos);
 
-			const result_t res = append_digit((*m_value).m_integer, c);
-			return result_t::s_ok == res ? result_t::s_need_more : res;
-		}
+		result_t on_exp_sign(const unsigned char& c, const int pos);
 
-		result_t on_fractional(const unsigned char& c, const int pos)
-		{
-			assert(m_value.has_value());
-			const result_t res = append_digit((*m_value).m_fractional_value, c);
-			(*m_value).m_fractional_digits++;
-			return result_t::s_ok == res ? result_t::s_need_more : res;
-		}
-
-		result_t on_exponent(const unsigned char& c, const int pos)
-		{
-			assert(m_value.has_value());
-			(*m_value).m_has_exponent = true;
-			return result_t::s_need_more;
-		}
-
-		result_t on_exp_sign(const unsigned char& c, const int pos)
-		{
-			assert(m_value.has_value());
-
-			switch (c)
-			{
-			case 0x2D:
-				(*m_value).m_exponent_positive = false; break;
-			case 0x2B:
-				(*m_value).m_exponent_positive = true; break;
-			default:
-				return result_t::e_fatal;
-			}
-			return result_t::s_need_more;
-		}
-
-		result_t on_exp_value(const unsigned char& c, const int pos)
-		{
-			assert(m_value.has_value());
-			const result_t res = append_digit((*m_value).m_exponent_value, c);
-			return result_t::s_ok == res ? result_t::s_need_more : res;
-		}
+		result_t on_exp_value(const unsigned char& c, const int pos);
 
 
-		result_t on_zero(const unsigned char& c, const int pos)
-		{
+		result_t on_zero(const unsigned char& c, const int pos);
 
-			const state_t s = state::get();
-			result_t res = result_t::s_ok;
+		result_t on_dot(const unsigned char& c, const int pos);
 
-			switch (s)
-			{
-			case state_t::initial:
-			case state_t::leading_minus:
-			case state_t::integer:
-				if (!m_value.has_value())
-					m_value.emplace();
-				res = append_digit((*m_value).m_integer, c);
-				break;
-			case state_t::dot:
-			case state_t::fractional:
-				assert(m_value.has_value());
-				res = append_digit((*m_value).m_fractional_value, c);
-				break;
-			case state_t::exponent_delim:
-			case state_t::exponent_sign:
-				assert(m_value.has_value());
-			case state_t::exponent_val:
-				res = append_digit((*m_value).m_exponent_value, c);
-				break;
-			}
+		result_t on_done(const unsigned char& c, const int pos);
 
-			return result_t::s_ok == res ? result_t::s_need_more : res;
-		}
+		result_t on_fail(const unsigned char& c, const int pos);
 
-		result_t on_dot(const unsigned char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		}
-
-		result_t on_done(const unsigned char& c, const int pos)
-		{
-			return result_t::s_done_rpt;
-		}
-
-		result_t on_fail(const unsigned char& c, const int pos)
-		{
-			return result_t::e_unexpected;
-		}
-
-		static result_t append_digit(uint32_t& val, const unsigned char& c)
-		{
-			if (c < 0x30 || 0x39 < c)
-				return result_t::e_fatal;
-
-			val *= 10;
-
-			switch (c)
-			{
-			case 0x31: val += 1; break; //1
-			case 0x32: val += 2; break; //2
-			case 0x33: val += 3; break; //3
-			case 0x34: val += 4; break;	//4
-			case 0x35: val += 5; break;	//5
-			case 0x36: val += 6; break;	//6
-			case 0x37: val += 7; break;	//7
-			case 0x38: val += 8; break;	//8
-			case 0x39: val += 9; break;	//9
-			}
-
-			return result_t::s_ok;
-		};
+		static result_t append_digit(uint32_t& val, const unsigned char& c);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -929,7 +648,7 @@ namespace json
 	};
 #pragma endregion
 //
-#pragma region -- parser_null -- 
+#pragma region -- null parser declaration -- 
 	enum class e_null_states
 	{
 		initial,
@@ -950,111 +669,64 @@ namespace json
 		other,
 	};
 
-	class null_parser
+	template <class StringT = std::string>
+	class null_parser_t
 		: public parser_impl<e_null_events, e_null_states, e_null_states::initial>
 	{
+		using string_t = StringT;
 		using event_t = e_null_events;
 		using state_t = e_null_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
 		using my_value_t = nullptr_t;
+		//std::bind(&string_parser::on_initial, this, std::placeholders::_1, std::placeholders::_2)
 	public:
-		null_parser()
+		null_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::letter_n,{ state_t::got_n,	BIND(null_parser::on_n) } },
-			{ event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::initial,	{	{ event_t::letter_n,	{ state_t::got_n,	std::bind(&null_parser_t::on_n,		this, std::placeholders::_1, std::placeholders::_2) } },
+									{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_n,{ { event_t::letter_u,{ state_t::got_u,	BIND(null_parser::on_u) } },
-			{ event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::got_n,	{	{ event_t::letter_u,	{ state_t::got_u,	std::bind(&null_parser_t::on_u,		this, std::placeholders::_1, std::placeholders::_2) } },
+									{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_u,{ { event_t::letter_l,{ state_t::got_l,	BIND(null_parser::on_l) } },
-			{ event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::got_u,	{	{ event_t::letter_l,	{ state_t::got_l,	std::bind(&null_parser_t::on_l,		this, std::placeholders::_1, std::placeholders::_2) } },
+									{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_l,{ { event_t::letter_l,{ state_t::done,	BIND(null_parser::on_done) } },
-			{ event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::got_l,	{	{ event_t::letter_l,	{ state_t::done,	std::bind(&null_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+									{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::done,	{	{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::other,{ state_t::failure,	BIND(null_parser::on_fail) } },
+			{ state_t::failure,	{	{ event_t::other,		{ state_t::failure,	std::bind(&null_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		}
 		{};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
-			m_value.reset();
-		};
+		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			return parser_impl::step(to_event(c), c, pos);
-		};
+		virtual result_t putchar(const char& c, const int pos) final;
 
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-				return *m_value;
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			switch (c)
-			{
-			case 0x6e:
-				return event_t::letter_n;
-			case 0x75:
-				return event_t::letter_u;
-			case 0x6c:
-				return event_t::letter_l;
-			}
+		virtual event_t to_event(const char& c) const override;
 
-			return event_t::other;
-		};
-
-		virtual event_t to_event(const result_t& c) const override
-		{
-			return event_t::other;
-		};
+		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_n(const unsigned char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		};
+		result_t on_n(const unsigned char& c, const int pos);
 
-		result_t on_u(const unsigned char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		};
+		result_t on_u(const unsigned char& c, const int pos);
 
-		result_t on_l(const unsigned char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		};
+		result_t on_l(const unsigned char& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_done(const unsigned char& c, const int pos);
 
-			(*m_value) = nullptr;
-
-			return result_t::s_done;
-		};
-
-		result_t on_fail(const unsigned char& c, const int pos)
-		{
-			return result_t::e_unexpected;
-		};
+		result_t on_fail(const unsigned char& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -1063,7 +735,7 @@ namespace json
 	};
 #pragma endregion
 //
-#pragma region -- parser_bool -- 
+#pragma region -- bool parser declaration -- 
 	enum class e_bool_states
 	{
 		initial,
@@ -1091,174 +763,83 @@ namespace json
 		symbol,
 	};
 
-	class bool_parser
+	template <class StringT = std::string>
+	class bool_parser_t
 		: public parser_impl<e_bool_events, e_bool_states, e_bool_states::initial>
 	{
+		using string_t = StringT;
 		using event_t = e_bool_events;
 		using state_t = e_bool_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
 		using my_value_t = bool;
 	public:
-		bool_parser()
+		bool_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::letter_t,{ state_t::got_t,	BIND(bool_parser::on_t) } },
-			{ event_t::letter_f,{ state_t::got_f,	BIND(bool_parser::on_f) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::initial,		{	{ event_t::letter_t,	{ state_t::got_t,	std::bind(&bool_parser_t::on_t,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::letter_f,	{ state_t::got_f,	std::bind(&bool_parser_t::on_f,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_t,{ { event_t::letter_r,{ state_t::got_r,	BIND(bool_parser::on_r) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_t,		{	{ event_t::letter_r,	{ state_t::got_r,	std::bind(&bool_parser_t::on_r,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_r,{ { event_t::letter_u,{ state_t::got_u,	BIND(bool_parser::on_u) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_r,		{	{ event_t::letter_u,	{ state_t::got_u,	std::bind(&bool_parser_t::on_u,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_u,{ { event_t::letter_e,{ state_t::done,	BIND(bool_parser::on_done) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_u,		{	{ event_t::letter_e,	{ state_t::done,	std::bind(&bool_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_f,{ { event_t::letter_a,{ state_t::got_a,	BIND(bool_parser::on_a) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_f,		{	{ event_t::letter_a,	{ state_t::got_a,	std::bind(&bool_parser_t::on_a,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_a,{ { event_t::letter_l,{ state_t::got_l,	BIND(bool_parser::on_l) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_a,		{	{ event_t::letter_l,	{ state_t::got_l,	std::bind(&bool_parser_t::on_l,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_l,{ { event_t::letter_s,{ state_t::got_s,	BIND(bool_parser::on_s) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_l,		{	{ event_t::letter_s,	{ state_t::got_s,	std::bind(&bool_parser_t::on_s,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::got_s,{ { event_t::letter_e,{ state_t::done,	BIND(bool_parser::on_done) } },
-			{ event_t::symbol,{ state_t::failure,	BIND(bool_parser::on_fail) } },
+			{ state_t::got_s,		{	{ event_t::letter_e,	{ state_t::done,	std::bind(&bool_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,	std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::symbol,{ state_t::failure, BIND(bool_parser::on_fail) } },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure, std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::symbol,{ state_t::failure, BIND(bool_parser::on_fail) } },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure, std::bind(&bool_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
-			m_str.clear();
-			m_value.reset();
-		};
+		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			return parser_impl::step(to_event(c), c, pos);
-		};
+		virtual result_t putchar(const char& c, const int pos) final;
 
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-				return *m_value;
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			switch (c)
-			{
-			case 0x61:
-				return event_t::letter_a;
-			case 0x65:
-				return event_t::letter_e;
-			case 0x66:
-				return event_t::letter_f;
-			case 0x6c:
-				return event_t::letter_l;
-			case 0x72:
-				return event_t::letter_r;
-			case 0x73:
-				return event_t::letter_s;
-			case 0x74:
-				return event_t::letter_t;
-			case 0x75:
-				return event_t::letter_u;
-			}
-			return event_t::symbol;
-		};
+		virtual event_t to_event(const char& c) const override;
 
-		virtual event_t to_event(const result_t& c) const override
-		{
-			return event_t::symbol;
-		};
+		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_t(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_t(const unsigned char& c, const int pos);
 
-		result_t on_r(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_r(const unsigned char& c, const int pos);
 
-		result_t on_u(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_u(const unsigned char& c, const int pos);
 
-		result_t on_f(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_f(const unsigned char& c, const int pos);
 
-		result_t on_a(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_a(const unsigned char& c, const int pos);
 
-		result_t on_l(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_l(const unsigned char& c, const int pos);
 
-		result_t on_s(const unsigned char& c, const int pos)
-		{
-			m_str += c;
-			return result_t::s_need_more;
-		}
+		result_t on_s(const unsigned char& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos)
-		{
-			m_str += c;
+		result_t on_done(const unsigned char& c, const int pos);
 
-			auto update = [this](const bool val)->result_t
-			{
-				if (!m_value.has_value())
-					m_value.emplace();
-
-				(*m_value) = val;
-
-				return result_t::s_done;
-			};
-
-			if (m_str == "true")
-				return update(true);
-			if (m_str == "false")
-				return update(false);
-
-			assert(0);
-
-			return result_t::e_unexpected;
-		}
-
-		result_t on_fail(const unsigned char& c, const int pos)
-		{
-			return result_t::e_unexpected;
-		}
+		result_t on_fail(const unsigned char& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -1267,9 +848,9 @@ namespace json
 
 		std::optional<my_value_t> m_value;
 	};
-#pragma endregion
+#pragma endregion 
 //
-#pragma region -- parser_value -- 
+#pragma region -- value parser declaration -- 
 	enum class e_value_states
 	{
 		initial,
@@ -1285,131 +866,52 @@ namespace json
 		nothing,
 	};
 
-	class value_parser
+	template <class StringT = std::string>
+	class value_parser_t
 		: public parser_impl<e_value_events, e_value_states, e_value_states::initial>
 	{
-		using event_t = e_value_events;
-		using state_t = e_value_states;
-		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using ParserItem_t = std::pair<bool, parser::ptr>;
-		using my_value_t = value_t<>;
+		using string_t				= StringT;
+		using event_t				= e_value_events;
+		using state_t				= e_value_states;
+		using EventToStateTable_t	= StateTable<state_t, event_t>;
+		using ParserItem_t			= std::pair<bool, parser::ptr>;
+		using my_value_t			= value_t<>;
 	public:
-		value_parser()
+		value_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::symbol,{ state_t::read,	BIND(value_parser::on_data) } },
+			{ state_t::initial,	{	{ event_t::symbol,	{ state_t::read,	std::bind(&value_parser_t::on_data, this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::read,{ { event_t::symbol,{ state_t::read,	BIND(value_parser::on_data) } },
-			{ event_t::val_done,{ state_t::done,	BIND(value_parser::on_done) } },
+			{ state_t::read,	{	{ event_t::symbol,	{ state_t::read,	std::bind(&value_parser_t::on_data, this, std::placeholders::_1, std::placeholders::_2) } },
+									{ event_t::val_done,{ state_t::done,	std::bind(&value_parser_t::on_done, this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::symbol,{ state_t::failure,	BIND(value_parser::on_fail) } },
+			{ state_t::done,	{	{ event_t::symbol,	{ state_t::failure,	std::bind(&value_parser_t::on_fail, this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::symbol,{ state_t::failure,	BIND(value_parser::on_fail) } },
+			{ state_t::failure,	{	{ event_t::symbol,	{ state_t::failure,	std::bind(&value_parser_t::on_fail, this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
-			for (ParserItem_t& p : parsing_unit)
-				p.first = true, p.second->reset();
-		};
+		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			result_t r = parser_impl::step(to_event(c), c, pos);
+		virtual result_t putchar(const char& c, const int pos) final;
 
-			if (state::get() == state_t::read && (result_t::s_done == r || result_t::s_done_rpt == r))
-			{
-				result_t new_r = parser_impl::step(to_event(r), c, pos);
-				assert(result_t::s_done == new_r);
-				return  r != new_r ? r : new_r;
-			}
-
-			return r;
-		};
-
-		virtual value get() const final
-		{
-			for (auto cit = parsing_unit.cbegin(); cit != parsing_unit.cend(); ++cit)
-			{
-				if (true == cit->first)
-				{
-					return cit->second->get();
-				}
-			}
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			return event_t::symbol;
-		};
+		virtual event_t to_event(const char& c) const override;
 
-		virtual event_t to_event(const result_t& c) const override
-		{
-			switch (state::get())
-			{
-			case state_t::read:
-				if (result_t::s_done == c || result_t::s_done_rpt == c)
-					return event_t::val_done;
-				break;
-			}
-
-			return event_t::nothing;
-		};
+		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_data(const unsigned char& c, const int pos)
-		{
-			result_t res = result_t::e_fatal;
-			uint8_t parsers_in_work = 0;
+		result_t on_data(const unsigned char& c, const int pos);
 
-			if (parsing_unit.empty())
-			{
-				parsing_unit.push_back(ParserItem_t(true, create_null_parser()));
-				parsing_unit.push_back(ParserItem_t(true, create_bool_parser()));
-				parsing_unit.push_back(ParserItem_t(true, create_string_parser()));
-				parsing_unit.push_back(ParserItem_t(true, create_number_parser()));
-				parsing_unit.push_back(ParserItem_t(true, create_array_parser()));
-				parsing_unit.push_back(ParserItem_t(true, create_object_parser()));
-			}
+		result_t on_done(const unsigned char& c, const int pos);
 
-			for (std::pair<bool, parser::ptr>& p : parsing_unit)
-			{
-				if (true == p.first)
-				{
-					result_t local_res = p.second->putchar(c, pos);
-
-					if (json_failed(local_res))
-						p.first = false;
-					else if (json_succeded(local_res) && (json_failed(res) || local_res < res))
-						res = local_res, parsers_in_work += 1;
-				}
-			}
-
-			if (0 == parsers_in_work)
-				res = result_t::e_unexpected;
-
-			return res;
-		}
-
-		result_t on_done(const unsigned char& c, const int pos)
-		{
-			return result_t::s_done;
-		}
-
-		result_t on_fail(const unsigned char& c, const int pos)
-		{
-			return result_t::e_unexpected;
-		}
+		result_t on_fail(const unsigned char& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -1418,7 +920,7 @@ namespace json
 	};
 #pragma endregion
 //
-#pragma region -- parser_array -- 
+#pragma region -- array parser declaration -- 
 	enum class e_array_states
 	{
 		initial,	//
@@ -1441,184 +943,71 @@ namespace json
 		nothing,	// no action event
 	};
 
-	class array_parser
+	template <class StringT = std::string>
+	class array_parser_t
 		: public parser_impl<e_array_events, e_array_states, e_array_states::initial>
 	{
+		using string_t = StringT;
 		using event_t = e_array_events;
 		using state_t = e_array_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
 		using my_value_t = array_t<>;
 	public:
-		array_parser()
-			: m_value_parser(create_value_parser())
-			, m_event_2_state_table
+		array_parser_t()
+			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::arr_begin,{ state_t::val_before,	BIND(array_parser::on_begin) } },
-			{ event_t::skip,{ state_t::val_before,	BIND(array_parser::on_more) } },
-			{ event_t::symbol,{ state_t::failure,		BIND(array_parser::on_fail) } },
+			{ state_t::initial,		{	{ event_t::arr_begin,	{ state_t::val_before,	std::bind(&array_parser_t::on_begin,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_before,{ { event_t::symbol,{ state_t::val_inside,	BIND(array_parser::on_val) } },
-			{ event_t::skip,{ state_t::val_before,	BIND(array_parser::on_more) } },
-			{ event_t::arr_end,{ state_t::done,		BIND(array_parser::on_done) } },
+			{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_after,{ { event_t::arr_end,{ state_t::done,		BIND(array_parser::on_done) } },
-			{ event_t::comma,{ state_t::val_before,	BIND(array_parser::on_new) } },
-			{ event_t::skip,{ state_t::val_before,	BIND(array_parser::on_more) } },
-			{ event_t::symbol,{ state_t::failure,		BIND(array_parser::on_fail) } },
+			{ state_t::val_after,	{	{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::comma,		{ state_t::val_before,	std::bind(&array_parser_t::on_new,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_inside,{ { event_t::symbol,{ state_t::val_inside,	BIND(array_parser::on_val) } },
-			{ event_t::val_done,{ state_t::val_after,	BIND(array_parser::on_got_val) } },
-			{ event_t::val_error,{ state_t::failure,		BIND(array_parser::on_fail) } },
+			{ state_t::val_inside,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_done,	{ state_t::val_after,	std::bind(&array_parser_t::on_got_val,this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::symbol,{ state_t::failure,		BIND(array_parser::on_fail) } },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::symbol,{ state_t::failure,		BIND(array_parser::on_fail) } },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
 	protected:
 		// Inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
+		virtual void reset() final;
 
-			m_value_parser->reset();
+		virtual result_t putchar(const char& c, const int pos) final;
 
-			m_value.reset();
-		};
-
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			result_t r = parser_impl::step(to_event(c), c, pos);
-
-			event_t e = to_event(r);
-
-			if (event_t::nothing == e)
-				return r;
-
-			if (event_t::val_done == e)
-			{
-				result_t new_r = parser_impl::step(e, c, pos);
-				r = result_t::s_need_more == new_r && result_t::s_done_rpt == r ?
-					parser_impl::step(to_event(c), c, pos) :
-					new_r;
-
-				return r;
-			}
-
-			assert(0);
-
-			return r;
-		};
-
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-				return *m_value;
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// Inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override
-		{
-			auto is_space = [](const char& c)->bool
-			{
-				// space, tab, cr, lf
-				return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
-			};
+		virtual event_t to_event(const char& c) const override;
 
-			switch (state::get())
-			{
-			case state_t::initial:
-				if (0x5B == c) //[
-					return event_t::arr_begin;
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			case state_t::val_before:
-				if (0x5D == c) //]
-					return event_t::arr_end;
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			case state_t::val_after:
-				if (0x5D == c) //]
-					return event_t::arr_end;
-				if (0x2C == c) //,
-					return event_t::comma;
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			}
-
-			return event_t::symbol;
-		};
-
-		virtual event_t to_event(const result_t& r) const override
-		{
-			switch (state::get())
-			{
-			case state_t::val_inside:
-				if (result_t::s_done == r || result_t::s_done_rpt == r)
-					return event_t::val_done;
-				break;
-			}
-
-			return event_t::nothing;
-		};
+		virtual event_t to_event(const result_t& r) const override;
 
 		// Own methods
-		result_t on_more(const unsigned& c, const int pos)
-		{
-			return result_t::s_need_more;
-		}
+		result_t on_more(const unsigned& c, const int pos);
 
-		result_t on_begin(const unsigned char& c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_begin(const unsigned char& c, const int pos);
 
-			return result_t::s_need_more;
-		}
+		result_t on_new(const unsigned char& c, const int pos);
 
-		result_t on_new(const unsigned char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		}
+		result_t on_val(const unsigned& c, const int pos);
 
-		result_t on_val(const unsigned& c, const int pos)
-		{
-			return m_value_parser->putchar(c, pos);
-		}
+		result_t on_got_val(const char& c, const int pos);
 
-		result_t on_got_val(const char& c, const int pos)
-		{
-			assert(m_value.has_value());
+		result_t on_done(const unsigned char& c, const int pos);
 
-			const value val = m_value_parser->get();
-
-			(*m_value).push_back(val);
-
-			m_value_parser->reset();
-
-			return result_t::s_need_more;
-		}
-
-		result_t on_done(const unsigned char& c, const int pos)
-		{
-			assert(m_value.has_value());
-
-			return result_t::s_done;
-		}
-
-		result_t on_fail(const unsigned char& c, const int pos)
-		{
-			return result_t::e_unexpected;
-		}
+		result_t on_fail(const unsigned char& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -1629,7 +1018,7 @@ namespace json
 	};
 #pragma endregion
 //
-#pragma region -- parser_object -- 
+#pragma region -- object parser declaration -- 
 	enum class e_object_states
 	{
 		initial,		//
@@ -1659,218 +1048,85 @@ namespace json
 		nothing,		// no action event
 	};
 
-	class object_parser
+	template <class StringT = std::string>
+	class object_parser_t
 		: public parser_impl<e_object_events, e_object_states, e_object_states::initial>
 	{
+		using string_t = StringT;
 		using event_t = e_object_events;
 		using state_t = e_object_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
 		using my_value_t = object_t<std::string>;
 	public:
 		// {ctor}
-		object_parser()
-			: m_key_parser(create_string_parser())
-			, m_val_parser(create_value_parser())
-			, m_event_2_state_table
+		object_parser_t()
+			: m_event_2_state_table
 		{
-			{ state_t::initial,{ { event_t::obj_begin,{ state_t::key_before,	BIND(object_parser::on_begin) } },
-			{ event_t::skip,{ state_t::val_before,	BIND(object_parser::on_more) } },
-			{ event_t::symbol,{ state_t::failure,		BIND(object_parser::on_fail) } },
+			{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	std::bind(&object_parser_t::on_begin,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_before,{ { event_t::obj_end,{ state_t::done,		BIND(object_parser::on_done) } },
-			{ event_t::key_error,{ state_t::failure,		BIND(object_parser::on_fail) } },
-			{ event_t::symbol,{ state_t::key_inside,	BIND(object_parser::on_key) } },
-			{ event_t::skip,{ state_t::key_before,	BIND(object_parser::on_more) } },
+			{ state_t::key_before,	{	{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::key_inside,	std::bind(&object_parser_t::on_key,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::key_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_inside,{ { event_t::key_done,{ state_t::key_after,	BIND(object_parser::on_more) } },
-			{ event_t::key_error,{ state_t::failure,		BIND(object_parser::on_fail) } },
-			{ event_t::symbol,{ state_t::key_inside,	BIND(object_parser::on_key) } },
+			{ state_t::key_inside,	{	{ event_t::key_done,	{ state_t::key_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::key_inside,	std::bind(&object_parser_t::on_key,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_after,{ { event_t::colon,{ state_t::val_before,	BIND(object_parser::on_more) } },
-			{ event_t::skip,{ state_t::key_after,	BIND(object_parser::on_more) } },
+			{ state_t::key_after,	{	{ event_t::colon,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::key_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_before,{ { event_t::symbol,{ state_t::val_inside,	BIND(object_parser::on_val) } },
-			{ event_t::val_error,{ state_t::failure,		BIND(object_parser::on_fail) } },
-			{ event_t::skip,{ state_t::val_before,	BIND(object_parser::on_more) } },
+			{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&object_parser_t::on_val,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_inside,{ { event_t::val_done,{ state_t::val_after,	BIND(object_parser::on_got_val) } },
-			{ event_t::val_error,{ state_t::failure,		BIND(object_parser::on_fail) } },
-			{ event_t::symbol,{ state_t::val_inside,	BIND(object_parser::on_val) } },
+			{ state_t::val_inside,	{	{ event_t::val_done,	{ state_t::val_after,	std::bind(&object_parser_t::on_got_val,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::val_inside,	std::bind(&object_parser_t::on_val,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_after,{ { event_t::comma,{ state_t::key_before,	BIND(object_parser::on_new) } },
-			{ event_t::obj_end,{ state_t::done,		BIND(object_parser::on_done) } },
-			{ event_t::skip,{ state_t::val_after,	BIND(object_parser::on_more) } },
+			{ state_t::val_after,	{	{ event_t::comma,		{ state_t::key_before,	std::bind(&object_parser_t::on_new,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,{ { event_t::symbol,{ state_t::failure,		BIND(object_parser::on_fail) } },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,{ { event_t::symbol,{ state_t::failure,		BIND(object_parser::on_fail) } },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
 	protected:
 		// inherited via parser
-		virtual void reset() final
-		{
-			state::set(state_t::initial);
+		virtual void reset() final;
 
-			m_key_parser->reset();
-			m_val_parser->reset();
+		virtual result_t putchar(const char& c, const int pos) final;
 
-			m_value.reset();
-		};
-
-		virtual result_t putchar(const char& c, const int pos) final
-		{
-			result_t r = parser_impl::step(to_event(c), c, pos);
-
-			event_t e = to_event(r);
-
-			if (event_t::nothing == e)
-				return r;
-
-			if (event_t::val_done == e || event_t::key_done == e)
-			{
-				result_t new_r = parser_impl::step(e, c, pos);
-				r = result_t::s_need_more == new_r && result_t::s_done_rpt == r ?
-					parser_impl::step(to_event(c), c, pos) :
-					new_r;
-
-				return r;
-			}
-
-			assert(0); // TODO: throw an exception
-
-			return r;
-		};
-
-		virtual value get() const final
-		{
-			if (m_value.has_value())
-				return *m_value;
-
-			assert(0); // TODO: throw an exception
-			return value();
-		};
+		virtual value get() const final;
 
 		// inherited via parser_impl
-		virtual const EventToStateTable_t& table() override { return m_event_2_state_table; }
+		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c)	  const override
-		{
-			auto is_space = [](const char& c)->bool
-			{
-				// space, tab, cr, lf
-				return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
-			};
+		virtual event_t to_event(const char& c)	  const override;
 
-			switch (state::get())
-			{
-			case state_t::initial:
-				if (0x7B == c)	//{
-					return event_t::obj_begin;
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			case state_t::key_before:
-				if (0x7D == c)	//}
-					return event_t::obj_end;
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			case state_t::key_after:
-				if (is_space(c))
-					return event_t::skip;
-				if (0x3A == c)	//:
-					return event_t::colon;
-				break;
-			case state_t::val_before:
-				if (is_space(c))
-					return event_t::skip;
-				break;
-			case state_t::val_after:
-				if (0x7D == c)	//}
-					return event_t::obj_end;
-				if (is_space(c))
-					return event_t::skip;
-				if (0x2c == c)	//,
-					return event_t::comma;
-				break;
-			}
-
-			return event_t::symbol;
-		};
-
-		virtual event_t to_event(const result_t& r) const override
-		{
-			switch (state::get())
-			{
-			case state_t::key_inside:
-				if (result_t::s_done == r)
-					return event_t::key_done;
-				break;
-			case state_t::val_inside:
-				if (result_t::s_done == r || result_t::s_done_rpt == r)
-					return event_t::val_done;
-				break;
-			}
-
-			return event_t::nothing;
-		};
+		virtual event_t to_event(const result_t& r) const override;
 
 		// own methods
-		result_t on_more(const char& c, const int pos)
-		{
-			return result_t::s_need_more;
-		}
+		result_t on_more(const char& c, const int pos);
 
-		result_t on_begin(const char& c, const int pos)
-		{
-			if (!m_value.has_value())
-				m_value.emplace();
+		result_t on_begin(const char& c, const int pos);
 
-			return result_t::s_need_more;
-		}
+		result_t on_new(const char& c, const int pos);
 
-		result_t on_new(const char& c, const int pos)
-		{
-			m_key_parser->reset();
-			m_val_parser->reset();
+		result_t on_key(const char& c, const int pos);
 
-			return result_t::s_need_more;
-		}
+		result_t on_val(const char& c, const int pos);
 
-		result_t on_key(const char& c, const int pos)
-		{
-			return m_key_parser->putchar(c, pos);
-		}
+		result_t on_done(const char& c, const int pos);
 
-		result_t on_val(const char& c, const int pos)
-		{
-			return m_val_parser->putchar(c, pos);
-		}
+		result_t on_fail(const char& c, const int pos);
 
-		result_t on_done(const char& c, const int pos)
-		{
-			return result_t::s_done;
-		}
-
-		result_t on_fail(const char& c, const int pos)
-		{
-			m_value.reset();
-			return result_t::e_unexpected;
-		}
-
-		result_t on_got_val(const char& c, const int pos)
-		{
-			assert(m_value.has_value());
-
-			const std::string key = std::get<std::string>(m_key_parser->get());
-			const value val = m_val_parser->get();
-
-			(*m_value)[key] = val;
-
-			return result_t::s_need_more;
-		}
+		result_t on_got_val(const char& c, const int pos);
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
@@ -1879,50 +1135,1183 @@ namespace json
 
 		std::optional<my_value_t> m_value;
 	};
+#pragma endregion 
+//////////////////////////////////////////////////////////////////////////
+#pragma region -- string parser definition --
+	template <class StringT>
+	void
+		string_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+		m_value.reset();
+	};
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		return parser_impl::step(to_event(c), c, pos);
+	};
+
+	template <class StringT>
+	value
+		string_parser_t<StringT>::get() const
+	{
+		if (m_value.has_value())
+			return *m_value;
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	template <class StringT>
+	const typename string_parser_t<StringT>::EventToStateTable_t&
+		string_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	}
+
+	template <class StringT>
+	typename string_parser_t<StringT>::event_t
+		string_parser_t<StringT>::to_event(const char& c) const
+	{
+		event_t smb = event_t::symbol;
+		switch (state::get())
+		{
+		case state_t::initial:
+			if (0x22 == c)
+				smb = event_t::quote;
+			break;
+		case state_t::inside:
+			if (0x5C == c)
+				smb = event_t::back_slash;
+			if (0x22 == c)
+				smb = event_t::quote;
+			break;
+		case state_t::escape:
+			switch (c)
+			{
+			case 0x22:	smb = event_t::quote;		break;
+			case 0x5C:	smb = event_t::back_slash;	break;
+			case 0x2F:	smb = event_t::slash;		break;
+			case 0x62:	smb = event_t::alpha_b;		break;
+			case 0x66:	smb = event_t::alpha_f;		break;
+			case 0x6E:	smb = event_t::alpha_n;		break;
+			case 0x72:	smb = event_t::alpha_r;		break;
+			case 0x74:	smb = event_t::alpha_t;		break;
+			case 0x75:	smb = event_t::alpha_u;		break;
+			}
+			break;
+		case state_t::cr:
+			if (0x5C == c)
+				return event_t::back_slash;
+			break;
+		case state_t::lf:
+			if (0x6E == c)
+				return event_t::alpha_n;
+			break;
+		case state_t::unicode_1:
+		case state_t::unicode_2:
+		case state_t::unicode_3:
+		case state_t::unicode_4:
+			if (0x30 <= c && c <= 0x39)
+				smb = event_t::hex_digit;
+			if (0x41 <= c && c <= 0x46)
+				smb = event_t::hex_digit;
+			if (0x61 <= c && c <= 0x66)
+				smb = event_t::hex_digit;
+			break;
+		case state_t::done:
+			assert(0);
+			break;
+		}
+
+		return smb;
+	};
+
+	template <class StringT>
+	typename string_parser_t<StringT>::event_t
+		string_parser_t<StringT>::to_event(const result_t& c) const
+	{
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_initial(const char&c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_inside(const char&c, const int pos)
+	{
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		(*m_value) += c;
+
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_escape(const char&c, const int pos)
+	{
+		assert(m_value.has_value());
+		(*m_value) += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_unicode(const char&c, const int pos)
+	{
+		assert(m_value.has_value());
+		(*m_value) += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_done(const char&c, const int pos)
+	{
+		return result_t::s_done;
+	}
+
+	template <class StringT>
+	result_t
+		string_parser_t<StringT>::on_fail(const char&c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
 #pragma endregion
-
-	/// creates object parser
-	static parser::ptr create_object_parser()
+//
+#pragma region -- number parser definition --
+	template <class StringT>
+	void
+		number_parser_t<StringT>::reset()
 	{
-		return json::parser::ptr(new object_parser());
+		state::set(state_t::initial);
+
+		m_value.reset();
 	}
 
-	/// creates array parser
-	static parser::ptr create_array_parser()
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::putchar(const char& c, const int pos)
 	{
-		return json::parser::ptr(new array_parser());
+		return parser_impl::step(to_event(c), c, pos);
 	}
 
-	/// creates number parser
-	static parser::ptr create_number_parser()
+	template <class StringT>
+	value
+		number_parser_t<StringT>::get() const
 	{
-		return json::parser::ptr(new number_parser());
+		if (m_value.has_value())
+		{
+			value val;
+			const number& num = (*m_value);
+			// contruct decimal fraction
+			if (num.m_fractional_value > 0)
+			{
+				// 1. put fractional part and shift all it's digits to the right
+				// 2. add integer part
+				double result = ((double)num.m_fractional_value) / pow(10, num.m_fractional_digits) + num.m_integer;
+				// 3. apply power
+				const uint32_t power = (uint32_t)pow(10, num.m_exponent_value);
+				if (num.m_has_exponent)
+					result = num.m_exponent_positive ? result * power : result / power;
+				// 4. apply sign
+				val = (num.m_positive ? 1.0 : -1.0) * result;
+			}
+			else
+			{
+				int64_t i64 = num.m_integer;
+				if (!num.m_positive)
+					i64 *= -1;
+				val = i64;
+			}
+
+			return val;
+		}
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	// Inherited via parser_impl
+	template <class StringT>
+	const typename number_parser_t<StringT>::EventToStateTable_t&
+		number_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
 	}
 
-	/// creates string parser
-	static parser::ptr create_string_parser()
+	template <class StringT>
+	typename number_parser_t<StringT>::event_t
+		number_parser_t<StringT>::to_event(const char& c) const
 	{
-		return json::parser::ptr(new string_parser());
+		if (0x2D == c)
+			return event_t::minus;
+		if (0x2B == c)
+			return event_t::plus;
+		if (0x30 == c)
+			return event_t::dec_zero;
+		if (0x2E == c)
+			return event_t::dot;
+		if (0x45 == c || 0x65 == c)
+			return event_t::exponent;
+		if (0x31 <= c && c <= 0x39)
+			return event_t::dec_digit;
+
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	typename number_parser_t<StringT>::event_t
+		number_parser_t<StringT>::to_event(const result_t& c) const
+	{
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_initial(const unsigned char& c, const int pos)
+	{
+		// TODO: use symbol
+		return result_t::s_need_more;
 	}
 
-	/// creates null parser
-	static parser::ptr create_null_parser()
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_minus(const unsigned char& c, const int pos)
 	{
-		return json::parser::ptr(new null_parser());
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		(*m_value).m_positive = false;
+
+		return result_t::s_need_more;
 	}
 
-	/// creates bool parser
-	static parser::ptr create_bool_parser()
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_integer(const unsigned char& c, const int pos)
 	{
-		return json::parser::ptr(new bool_parser());
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		const result_t res = append_digit((*m_value).m_integer, c);
+		return result_t::s_ok == res ? result_t::s_need_more : res;
 	}
 
-	/// creates value parser
-	static parser::ptr create_value_parser()
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_fractional(const unsigned char& c, const int pos)
 	{
-		return json::parser::ptr(new value_parser());
+		assert(m_value.has_value());
+		const result_t res = append_digit((*m_value).m_fractional_value, c);
+		(*m_value).m_fractional_digits++;
+		return result_t::s_ok == res ? result_t::s_need_more : res;
 	}
 
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_exponent(const unsigned char& c, const int pos)
+	{
+		assert(m_value.has_value());
+		(*m_value).m_has_exponent = true;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_exp_sign(const unsigned char& c, const int pos)
+	{
+		assert(m_value.has_value());
+
+		switch (c)
+		{
+		case 0x2D:
+			(*m_value).m_exponent_positive = false; break;
+		case 0x2B:
+			(*m_value).m_exponent_positive = true; break;
+		default:
+			return result_t::e_fatal;
+		}
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_exp_value(const unsigned char& c, const int pos)
+	{
+		assert(m_value.has_value());
+		const result_t res = append_digit((*m_value).m_exponent_value, c);
+		return result_t::s_ok == res ? result_t::s_need_more : res;
+	}
+
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_zero(const unsigned char& c, const int pos)
+	{
+
+		const state_t s = state::get();
+		result_t res = result_t::s_ok;
+
+		switch (s)
+		{
+		case state_t::initial:
+		case state_t::leading_minus:
+		case state_t::integer:
+			if (!m_value.has_value())
+				m_value.emplace();
+			res = append_digit((*m_value).m_integer, c);
+			break;
+		case state_t::dot:
+		case state_t::fractional:
+			assert(m_value.has_value());
+			res = append_digit((*m_value).m_fractional_value, c);
+			break;
+		case state_t::exponent_delim:
+		case state_t::exponent_sign:
+			assert(m_value.has_value());
+		case state_t::exponent_val:
+			res = append_digit((*m_value).m_exponent_value, c);
+			break;
+		}
+
+		return result_t::s_ok == res ? result_t::s_need_more : res;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_dot(const unsigned char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+	{
+		return result_t::s_done_rpt;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
+
+	template <class StringT>
+	result_t
+		number_parser_t<StringT>::append_digit(uint32_t& val, const unsigned char& c)
+	{
+		if (c < 0x30 || 0x39 < c)
+			return result_t::e_fatal;
+
+		val *= 10;
+
+		switch (c)
+		{
+		case 0x31: val += 1; break; //1
+		case 0x32: val += 2; break; //2
+		case 0x33: val += 3; break; //3
+		case 0x34: val += 4; break;	//4
+		case 0x35: val += 5; break;	//5
+		case 0x36: val += 6; break;	//6
+		case 0x37: val += 7; break;	//7
+		case 0x38: val += 8; break;	//8
+		case 0x39: val += 9; break;	//9
+		}
+
+		return result_t::s_ok;
+	};
+#pragma endregion
+//
+#pragma region -- null parser definition -- 
+	template <class StringT>
+	void
+		null_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+		m_value.reset();
+	}
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		return parser_impl::step(to_event(c), c, pos);
+	}
+
+	template <class StringT>
+	value
+		null_parser_t<StringT>::get() const
+	{
+		if (m_value.has_value())
+			return *m_value;
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	template <class StringT>
+	const typename null_parser_t<StringT>::EventToStateTable_t&
+		null_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	}
+
+	template <class StringT>
+	typename null_parser_t<StringT>::event_t
+		null_parser_t<StringT>::to_event(const char& c) const
+	{
+		switch (c)
+		{
+		case 0x6e:
+			return event_t::letter_n;
+		case 0x75:
+			return event_t::letter_u;
+		case 0x6c:
+			return event_t::letter_l;
+		}
+
+		return event_t::other;
+	}
+
+	template <class StringT>
+	typename null_parser_t<StringT>::event_t
+		null_parser_t<StringT>::to_event(const result_t& c) const
+	{
+		return event_t::other;
+	}
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::on_n(const unsigned char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::on_u(const unsigned char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::on_l(const unsigned char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+	{
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		(*m_value) = nullptr;
+
+		return result_t::s_done;
+	};
+
+	template <class StringT>
+	result_t
+		null_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
+#pragma endregion
+//
+#pragma region -- bool parser definition -- 
+	template <class StringT>
+	void
+		bool_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+		m_str.clear();
+		m_value.reset();
+	};
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		return parser_impl::step(to_event(c), c, pos);
+	};
+
+	template <class StringT>
+	value
+		bool_parser_t<StringT>::get() const
+	{
+		if (m_value.has_value())
+			return *m_value;
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	template <class StringT>
+	const typename bool_parser_t<StringT>::EventToStateTable_t&
+		bool_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	}
+
+	template <class StringT>
+	typename bool_parser_t<StringT>::event_t
+		bool_parser_t<StringT>::to_event(const char& c) const
+	{
+		switch (c)
+		{
+		case 0x61:
+			return event_t::letter_a;
+		case 0x65:
+			return event_t::letter_e;
+		case 0x66:
+			return event_t::letter_f;
+		case 0x6c:
+			return event_t::letter_l;
+		case 0x72:
+			return event_t::letter_r;
+		case 0x73:
+			return event_t::letter_s;
+		case 0x74:
+			return event_t::letter_t;
+		case 0x75:
+			return event_t::letter_u;
+		}
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	typename bool_parser_t<StringT>::event_t
+		bool_parser_t<StringT>::to_event(const result_t& c) const
+	{
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_t(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_r(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_u(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_f(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_a(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_l(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_s(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+	{
+		m_str += c;
+
+		auto update = [this](const bool val)->result_t
+		{
+			if (!m_value.has_value())
+				m_value.emplace();
+
+			(*m_value) = val;
+
+			return result_t::s_done;
+		};
+
+		if (m_str == "true")
+			return update(true);
+		if (m_str == "false")
+			return update(false);
+
+		assert(0);
+
+		return result_t::e_unexpected;
+	}
+
+	template <class StringT>
+	result_t
+		bool_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
+#pragma endregion
+//
+#pragma region -- value parser definition --
+	template <class StringT>
+	void
+		value_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+		for (ParserItem_t& p : parsing_unit)
+			p.first = true, p.second->reset();
+	};
+
+	template <class StringT>
+	result_t
+		value_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		result_t r = parser_impl::step(to_event(c), c, pos);
+
+		if (state::get() == state_t::read && (result_t::s_done == r || result_t::s_done_rpt == r))
+		{
+			result_t new_r = parser_impl::step(to_event(r), c, pos);
+			assert(result_t::s_done == new_r);
+			return  r != new_r ? r : new_r;
+		}
+
+		return r;
+	};
+
+	template <class StringT>
+	value
+		value_parser_t<StringT>::get() const
+	{
+		for (auto cit = parsing_unit.cbegin(); cit != parsing_unit.cend(); ++cit)
+		{
+			if (true == cit->first)
+			{
+				return cit->second->get();
+			}
+		}
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	template <class StringT>
+	const typename value_parser_t<StringT>::EventToStateTable_t&
+		value_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	};
+
+	template <class StringT>
+	typename value_parser_t<StringT>::event_t
+		value_parser_t<StringT>::to_event(const char& c) const
+	{
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	typename value_parser_t<StringT>::event_t
+		value_parser_t<StringT>::to_event(const result_t& c) const
+	{
+		switch (state::get())
+		{
+		case state_t::read:
+			if (result_t::s_done == c || result_t::s_done_rpt == c)
+				return event_t::val_done;
+			break;
+		}
+
+		return event_t::nothing;
+	};
+
+	template <class StringT>
+	result_t
+		value_parser_t<StringT>::on_data(const unsigned char& c, const int pos)
+	{
+		result_t res = result_t::e_fatal;
+		uint8_t parsers_in_work = 0;
+
+		if (parsing_unit.empty())
+		{
+			parsing_unit.push_back(ParserItem_t(true, new null_parser_t<StringT>()));
+			parsing_unit.push_back(ParserItem_t(true, new bool_parser_t<StringT>()));
+			parsing_unit.push_back(ParserItem_t(true, new string_parser_t<StringT>()));
+			parsing_unit.push_back(ParserItem_t(true, new number_parser_t<StringT>()));
+			parsing_unit.push_back(ParserItem_t(true, new array_parser_t<StringT>()));
+			parsing_unit.push_back(ParserItem_t(true, new object_parser_t<StringT>()));
+		}
+
+		for (std::pair<bool, parser::ptr>& p : parsing_unit)
+		{
+			if (true == p.first)
+			{
+				result_t local_res = p.second->putchar(c, pos);
+
+				if (json_failed(local_res))
+					p.first = false;
+				else if (json_succeded(local_res) && (json_failed(res) || local_res < res))
+					res = local_res, parsers_in_work += 1;
+			}
+		}
+
+		if (0 == parsers_in_work)
+			res = result_t::e_unexpected;
+
+		return res;
+	}
+
+	template <class StringT>
+	result_t
+		value_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+	{
+		return result_t::s_done;
+	}
+
+	template <class StringT>
+	result_t
+		value_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
+#pragma endregion
+//
+#pragma region -- array parser definition -- 
+	template <class StringT>
+	void
+		array_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+
+		if (!m_value_parser)
+			m_value_parser.reset(new value_parser_t<StringT>());
+
+		m_value_parser->reset();
+
+		m_value.reset();
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		result_t r = parser_impl::step(to_event(c), c, pos);
+
+		event_t e = to_event(r);
+
+		if (event_t::nothing == e)
+			return r;
+
+		if (event_t::val_done == e)
+		{
+			result_t new_r = parser_impl::step(e, c, pos);
+			r = result_t::s_need_more == new_r && result_t::s_done_rpt == r ?
+				parser_impl::step(to_event(c), c, pos) :
+				new_r;
+
+			return r;
+		}
+
+		assert(0);
+
+		return r;
+	}
+
+	template <class StringT>
+	value
+		array_parser_t<StringT>::get() const
+	{
+		if (m_value.has_value())
+			return *m_value;
+
+		assert(0); // TODO: throw an exception
+		return value();
+	}
+
+	// Inherited via parser_impl
+	template <class StringT>
+	const typename array_parser_t<StringT>::EventToStateTable_t&
+		array_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	}
+
+	template <class StringT>
+	typename array_parser_t<StringT>::event_t
+		array_parser_t<StringT>::to_event(const char& c) const
+	{
+		auto is_space = [](const char& c)->bool
+		{
+			// space, tab, cr, lf
+			return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
+		};
+
+		switch (state::get())
+		{
+		case state_t::initial:
+			if (0x5B == c) //[
+				return event_t::arr_begin;
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		case state_t::val_before:
+			if (0x5D == c) //]
+				return event_t::arr_end;
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		case state_t::val_after:
+			if (0x5D == c) //]
+				return event_t::arr_end;
+			if (0x2C == c) //,
+				return event_t::comma;
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		}
+
+		return event_t::symbol;
+	}
+
+	template <class StringT>
+	typename array_parser_t<StringT>::event_t
+		array_parser_t<StringT>::to_event(const result_t& r) const
+	{
+		switch (state::get())
+		{
+		case state_t::val_inside:
+			if (result_t::s_done == r || result_t::s_done_rpt == r)
+				return event_t::val_done;
+			break;
+		}
+
+		return event_t::nothing;
+	}
+
+	// Own methods
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_more(const unsigned& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_begin(const unsigned char& c, const int pos)
+	{
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_new(const unsigned char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_val(const unsigned& c, const int pos)
+	{
+		return m_value_parser->putchar(c, pos);
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_got_val(const char& c, const int pos)
+	{
+		assert(m_value.has_value());
+
+		const value val = m_value_parser->get();
+
+		(*m_value).push_back(val);
+
+		m_value_parser->reset();
+
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+	{
+		assert(m_value.has_value());
+
+		return result_t::s_done;
+	}
+
+	template <class StringT>
+	result_t
+		array_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+	{
+		return result_t::e_unexpected;
+	}
+#pragma endregion
+//
+#pragma region -- object parser definition --
+	template <class StringT>
+	void
+		object_parser_t<StringT>::reset()
+	{
+		state::set(state_t::initial);
+
+		if (!m_key_parser)
+			m_key_parser.reset(new string_parser_t<StringT>());
+		else
+			m_key_parser->reset();
+
+		if (!m_val_parser)
+			m_val_parser.reset(new value_parser_t<StringT>());
+		else
+			m_val_parser->reset();
+
+		m_value.reset();
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::putchar(const char& c, const int pos)
+	{
+		result_t r = parser_impl::step(to_event(c), c, pos);
+
+		event_t e = to_event(r);
+
+		if (event_t::nothing == e)
+			return r;
+
+		if (event_t::val_done == e || event_t::key_done == e)
+		{
+			result_t new_r = parser_impl::step(e, c, pos);
+			r = result_t::s_need_more == new_r && result_t::s_done_rpt == r ?
+				parser_impl::step(to_event(c), c, pos) :
+				new_r;
+
+			return r;
+		}
+
+		assert(0); // TODO: throw an exception
+
+		return r;
+	};
+
+	template <class StringT>
+	value
+		object_parser_t<StringT>::get() const
+	{
+		if (m_value.has_value())
+			return *m_value;
+
+		assert(0); // TODO: throw an exception
+		return value();
+	};
+
+	// inherited via parser_impl
+	template <class StringT> 
+	const typename object_parser_t<StringT>::EventToStateTable_t&
+		object_parser_t<StringT>::table()
+	{
+		return m_event_2_state_table;
+	}
+
+	template <class StringT>
+	typename object_parser_t<StringT>::event_t
+		object_parser_t<StringT>::to_event(const char& c) const
+	{
+		auto is_space = [](const char& c)->bool
+		{
+			// space, tab, cr, lf
+			return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
+		};
+
+		switch (state::get())
+		{
+		case state_t::initial:
+			if (0x7B == c)	//{
+				return event_t::obj_begin;
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		case state_t::key_before:
+			if (0x7D == c)	//}
+				return event_t::obj_end;
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		case state_t::key_after:
+			if (is_space(c))
+				return event_t::skip;
+			if (0x3A == c)	//:
+				return event_t::colon;
+			break;
+		case state_t::val_before:
+			if (is_space(c))
+				return event_t::skip;
+			break;
+		case state_t::val_after:
+			if (0x7D == c)	//}
+				return event_t::obj_end;
+			if (is_space(c))
+				return event_t::skip;
+			if (0x2c == c)	//,
+				return event_t::comma;
+			break;
+		}
+
+		return event_t::symbol;
+	};
+
+	template <class StringT>
+	typename object_parser_t<StringT>::event_t
+		object_parser_t<StringT>::to_event(const result_t& r) const
+	{
+		switch (state::get())
+		{
+		case state_t::key_inside:
+			if (result_t::s_done == r)
+				return event_t::key_done;
+			break;
+		case state_t::val_inside:
+			if (result_t::s_done == r || result_t::s_done_rpt == r)
+				return event_t::val_done;
+			break;
+		}
+
+		return event_t::nothing;
+	};
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_more(const char& c, const int pos)
+	{
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_begin(const char& c, const int pos)
+	{
+		if (!m_key_parser)
+			m_key_parser.reset(new string_parser_t<StringT>());
+
+		if (!m_val_parser)
+			m_val_parser.reset(new value_parser_t<StringT>());
+
+		if (!m_value.has_value())
+			m_value.emplace();
+
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_new(const char& c, const int pos)
+	{
+		if (!m_key_parser)
+			m_key_parser.reset(new string_parser_t<StringT>());
+		else
+			m_key_parser->reset();
+
+		if (!m_val_parser)
+			m_val_parser.reset(new value_parser_t<StringT>());
+		else
+			m_val_parser->reset();
+
+		return result_t::s_need_more;
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_key(const char& c, const int pos)
+	{
+		return m_key_parser->putchar(c, pos);
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_val(const char& c, const int pos)
+	{
+		return m_val_parser->putchar(c, pos);
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_done(const char& c, const int pos)
+	{
+		return result_t::s_done;
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_fail(const char& c, const int pos)
+	{
+		m_value.reset();
+		return result_t::e_unexpected;
+	}
+
+	template <class StringT>
+	result_t
+		object_parser_t<StringT>::on_got_val(const char& c, const int pos)
+	{
+		assert(m_value.has_value());
+
+		const string_t key = std::get<string_t>(m_key_parser->get());
+		const value val = m_val_parser->get();
+
+		(*m_value)[key] = val;
+
+		return result_t::s_need_more;
+	}
+#pragma endregion
+//////////////////////////////////////////////////////////////////////////
+#pragma region -- factory --
+ 	/// creates object parser
+ 	inline parser::ptr create() 
+	{ 
+		return json::parser::ptr(new object_parser_t<>()); 
+	}
+#pragma endregion
+//////////////////////////////////////////////////////////////////////////
 }
 
-#endif // __PARSERS_H__
+#endif // __JSON_LIB_H__

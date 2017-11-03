@@ -43,7 +43,7 @@ process(/*const */std::istream& input, json::object_t<>& jsobj)
 	char c = 0;
 	json::result_t result = json::result_t::s_ok;
 
-	json::parser::ptr p = json::create_object_parser();
+	json::parser::ptr p = json::create();
 	if (!p)
 		return result_t::e_fatal;
 
