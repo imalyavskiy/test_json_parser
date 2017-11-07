@@ -20,15 +20,106 @@
 #include <variant>
 #include <vector>
 
-struct json
-{
-	/// Forward declaration for JSON object data structure
-	template <class StringT = std::string, class KeyT = StringT>
-	struct object_t;
+#define JSON_TEMPLATE_PARAMS                                              \
+template <                                                                \
+    class SymbolT,                                                        \
+    class IntegerT,                                                       \
+    class FloatingPtT,                                                    \
+    class BooleanT,                                                       \
+    class NullT,                                                          \
+    template <class _Kty, class _Ty> class PairT,                         \
+    template <class _Ty> class LessT,                                     \
+    template <class _Elem> class CharTraitsT,                             \
+    template <class _Ty, class _Alloc> class VectorT,                     \
+    template <class _Ty, class _Alloc> class ListT,                       \
+    template <class _Kty, class _Ty, class _Pr, class _Alloc> class MapT, \
+    template <class _Elem, class _Traits, class _Alloc> class StringT,    \
+    template <class _Elem, class _Traits, class _Alloc> class StrStrmT,   \
+    template <class _Elem, class _Traits> class IStrmT,                   \
+    template <class _Ty> class AllocatorT                                 \
+>
+#define JSON_TEMPLATE_CLASS \
+json_t< SymbolT,            \
+        IntegerT,           \
+        FloatingPtT,        \
+        BooleanT,           \
+        NullT,              \
+        PairT,              \
+        LessT,              \
+        CharTraitsT,        \
+        VectorT,            \
+        ListT,              \
+        MapT,               \
+        StringT,            \
+        StrStrmT,           \
+        IStrmT,             \
+        AllocatorT          \
+>
 
-	/// Forward declaration for JSON array data structure
-	template <class StringT = std::string>
-	struct array_t;
+template <
+    class SymbolT           = char,
+    class IntegerT          = int64_t,
+    class FloatingPtT       = double,
+    class BooleanT          = bool,
+    class NullT             = nullptr_t,
+    template <class _Kty, class _Ty>
+        class PairT         = std::pair,
+    template <class _Ty>
+        class LessT         = std::less,
+    template <class _Elem>
+        class CharTraitsT   = std::char_traits,
+    template <class _Ty, class _Alloc> 
+        class VectorT       = std::vector, 
+    template <class _Ty, class _Alloc>
+        class ListT         = std::list,
+    template <class _Kty, class _Ty, class _Pr, class _Alloc>
+        class MapT          = std::map,
+    template <class _Elem, class _Traits, class _Alloc>
+        class StringT       = std::basic_string,
+    template <class _Elem, class _Traits, class _Alloc>
+        class StrStrmT      = std::basic_stringstream,
+    template <class _Elem, class _Traits>
+        class IStrmT        = std::basic_istream,
+    template <class _Ty>
+        class AllocatorT    = std::allocator
+>
+struct json_t
+{
+    using symbol_t          = SymbolT;
+    using integer_t         = IntegerT;
+    using floatingpt_t      = FloatingPtT;
+    using boolean_t         = BooleanT;
+    using null_t            = NullT;
+
+    template <class _Ty> 
+        using allocator_t   = AllocatorT<_Ty>;
+    template <class _Kty, class _Ty> 
+        using pair_t        = PairT<_Kty, _Ty>;
+    template <class _Elem>
+        using char_traits_t = CharTraitsT<_Elem>;
+    template <class _Ty>
+        using less_t        = LessT<_Ty>;
+    template <class _Ty, class _Alloc = allocator_t<_Ty>> 
+        using vector_t      = VectorT<_Ty, _Alloc>;
+    template <class _Ty, class _Alloc = allocator_t<_Ty>> 
+        using list_t        = ListT<_Ty, _Alloc>;
+    template <class _Kty, class _Ty, class _Pr = less_t<_Kty>, class _Alloc = allocator_t<pair_t<const _Kty, _Ty>>> 
+        using map_t         = MapT<_Kty, _Ty, _Pr, _Alloc>;
+    template <class _Elem, class _Traits = char_traits_t<_Elem>, class _Alloc = allocator_t<_Elem>> 
+        using string_t      = StringT<_Elem, _Traits, _Alloc>;
+        using string = string_t<symbol_t>;
+    template <class _Elem, class _Traits = char_traits_t<_Elem>, class _Alloc = allocator_t<_Elem>>
+        using sstream_t     = StrStrmT<_Elem, _Traits, _Alloc>;
+        using sstream = sstream_t<symbol_t>;
+    template <class _Elem, class _Traits = char_traits_t<_Elem>>
+        using istream_t     = IStrmT<_Elem, _Traits>;
+        using istream = istream_t<symbol_t>;
+
+    /// Forward declaration for JSON object data structure
+    struct object;
+
+    /// Forward declaration for JSON array data structure
+    struct array;
 
 	/// possible results
 	enum class result_t
@@ -41,12 +132,12 @@ struct json
 		e_unexpected	= -2, // unexpected parameter value
 	};
 
-	inline static bool failed(const result_t& r) { return r < result_t::s_ok; }
-	inline static bool succeded(const result_t& r) { return r >= result_t::s_ok; }
+	inline static boolean_t failed(const result_t& r) { return r < result_t::s_ok; }
+	inline static boolean_t succeded(const result_t& r) { return r >= result_t::s_ok; }
 
-    static result_t parse(std::istream& input, json::object_t<>& jsobj)
+    static result_t parse(istream& input, object& jsobj)
     {
-        char c = 0;
+        symbol_t c = 0;
         result_t result = result_t::s_ok;
 
         parser::ptr p = create();
@@ -62,7 +153,7 @@ struct json
 
             if (result_t::s_done == result)
             {
-                jsobj = std::get<json::object_t<>>(p->get());
+                jsobj = std::get<object>(p->get());
                 break;
             }
         }
@@ -70,83 +161,80 @@ struct json
         return result;
     }
 
-    static result_t parse(const std::string& input, json::object_t<>& jsobj)
+    static result_t parse(const string& input, object& jsobj)
     {
-        std::stringstream sstr;
+        sstream sstr;
         sstr.str(input);
         return parse(sstr, jsobj);
     }
 
 #pragma region -- value definition --
-	template<class StringT = std::string, class ObjectT = object_t<StringT, StringT>, class ArrayT = array_t<StringT>, class IntNumT = int64_t, class RealNumT = double, class BooleanT = bool, class NullT = nullptr_t>
-	struct value_t
-		: public std::variant<StringT, ObjectT, ArrayT, IntNumT, RealNumT, BooleanT, NullT>
+	struct value
+		: public std::variant<string, object, array, integer_t, floatingpt_t, boolean_t, null_t>
 	{
-		using base_t = std::variant<StringT, ObjectT, ArrayT, IntNumT, RealNumT, BooleanT, NullT>;
+		using base_t = std::variant<string, object, array, integer_t, floatingpt_t, boolean_t, null_t>;
 
 		/// {ctor}s
-		value_t() { }
-		value_t(const StringT&	other) : base_t(other) {}
-		value_t(const ObjectT&	other) : base_t(other) {}
-		value_t(const ArrayT&	other) : base_t(other) {}
-		value_t(const IntNumT	other) : base_t(other) {}
-		value_t(const RealNumT other) : base_t(other) {}
-		value_t(const BooleanT other) : base_t(other) {}
-		value_t(const char* other) : base_t(StringT(other)) {}
-		value_t(const NullT other) : base_t(other) {}
+		value() { }
+		value(const string&	other) : base_t(other) {}
+		value(const object&	other) : base_t(other) {}
+		value(const array&	other) : base_t(other) {}
+		value(const integer_t	other) : base_t(other) {}
+		value(const floatingpt_t other) : base_t(other) {}
+		value(const boolean_t other) : base_t(other) {}
+		value(const symbol_t* other) : base_t(string(other)) {}
+		value(const null_t other) : base_t(other) {}
 
 		/// Assign operators
-		const value_t& operator=(const StringT& other)
+		const value& operator=(const string& other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const ObjectT& other)
+		const value& operator=(const object& other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const ArrayT& other)
+		const value& operator=(const array& other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const IntNumT other)
+		const value& operator=(const integer_t other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const RealNumT other)
+		const value& operator=(const floatingpt_t other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const BooleanT other)
+		const value& operator=(const boolean_t other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 
-		const value_t& operator=(const char* other)
+		const value& operator=(const symbol_t* other)
 		{
 			base_t::operator=(StringT(other));
 			return (*this);
 		}
 
-		const value_t& operator=(const NullT other)
+		const value& operator=(const null_t other)
 		{
 			base_t::operator=(other);
 			return (*this);
 		}
 	};
 
-	/// Shortening
-	using value = value_t<>;
 #pragma endregion
 //
 #pragma region -- json data declaration --
@@ -172,31 +260,29 @@ struct json
 		container() = default;
 		container(std::initializer_list<value> l) : BaseType(l) {}
 
-		virtual const std::string str(std::stringstream& str = std::stringstream()) = 0;
+		virtual const string str(sstream& str = stream()) = 0;
 	};
 
 	/// Declaration of the object JSON data structure
-	template <class StringT, class KeyT>
-	struct object_t : public container<std::map<StringT, value>>
+	struct object : public container<map_t<string, value>>
 	{
 		/// {ctor}s
-		object_t() = default;
-		object_t(std::initializer_list<std::pair<KeyT, value>> l);
+		object() = default;
+		object(std::initializer_list<pair_t<string, value>> l);
 
 		/// serialization
-		virtual const StringT str(std::stringstream& str = std::stringstream()) final;
+		virtual const string str(sstream& str = sstream()) final;
 	};
 
 	/// Declaration of the array JSON data structure
-	template <class StringT>
-	struct array_t : public container<std::vector<value>>
+	struct array : public container<vector_t<value>>
 	{
 		/// {ctor}s
-		array_t() = default;
-		array_t(std::initializer_list<value> l);
+		array() = default;
+		array(std::initializer_list<value> l);
 
 		/// serialization
-		virtual const StringT str(std::stringstream& str = std::stringstream()) final;
+		virtual const string str(sstream& str = sstream()) final;
 	};
 #pragma endregion
 //
@@ -212,7 +298,7 @@ struct json
 		virtual void		reset() = 0;
 
 		/// Puts a character to the parsing routine
-		virtual result_t	putchar(const char& c, const int pos) = 0;
+		virtual result_t	putchar(const symbol_t& c, const int pos) = 0;
 
 		/// Retrieves the parsing result
 		virtual value		get() const = 0;
@@ -221,22 +307,22 @@ struct json
 //
 #pragma region -- parser_base -- 
 #pragma region -- state machine types --
-	using state_change_handler_t = std::function<result_t(const char&, const int)>;
+	using state_change_handler_t = std::function<result_t(const symbol_t&, const int)>;
 
 	template <typename READSTATE, typename _STATE_CHANGE_HANDLER>
-	using TTransition = std::pair<READSTATE, _STATE_CHANGE_HANDLER>;
+	using TTransition = pair_t<READSTATE, _STATE_CHANGE_HANDLER>;
 
 	template<typename STATE, typename STATE_CHANGE_HANDLER>
 	using Transition = TTransition<STATE, STATE_CHANGE_HANDLER>;
 
 	template <typename EVENT, typename TRANSITION>
-	using TTransitionTable = std::map<typename EVENT, typename TRANSITION>;
+	using TTransitionTable = map_t<typename EVENT, typename TRANSITION>;
 
 	template<typename STATE, typename EVENT, typename STATE_CHANGE_HANDLER>
 	using TransitionTable = TTransitionTable<EVENT, Transition<STATE, STATE_CHANGE_HANDLER>>;
 
 	template <typename READSTATE, typename TRANSITION_TABLE = TransitionTable>
-	using TStateTable = std::map<READSTATE, TRANSITION_TABLE>;
+	using TStateTable = map_t<READSTATE, TRANSITION_TABLE>;
 
 	template<typename STATE, typename EVENT, typename STATE_CHANGE_HANDLER = state_change_handler_t>
 	using StateTable = TStateTable<STATE, TransitionTable<STATE, EVENT, STATE_CHANGE_HANDLER>>;
@@ -264,7 +350,7 @@ struct json
 		parser_impl() {};
 
 		// The step of the automata
-		result_t step(const event_t& e, const char& c, const int pos)
+		result_t step(const event_t& e, const symbol_t& c, const int pos)
 		{
 			auto transition_group = table().at(state::get());
 			if (transition_group.end() != transition_group.find(e))
@@ -282,7 +368,7 @@ struct json
 		}
 
 	protected:
-		virtual event_t to_event(const char& c) const = 0;
+		virtual event_t to_event(const symbol_t& c) const = 0;
 		virtual event_t to_event(const result_t& c) const = 0;
 
 		virtual const StateTable_t& table() = 0;
@@ -320,24 +406,21 @@ struct json
 		alpha_u,	// stands for unicode
 	};
 
-	template <class StringT = std::string>
 	class string_parser_t
 		: public parser_impl<e_string_events, e_string_states, e_string_states::initial>
 	{
 	public:
-		using string_t				= StringT;
 		using event_t				= e_string_events;
 		using state_t				= e_string_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
-		using my_value_t			= std::string;
 
 		string_parser_t()
 			: m_event_2_state_table
 		{
 			{ state_t::initial,		{	{ event_t::quote,		{ state_t::inside,		std::bind(&string_parser_t::on_initial,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::inside,		{	{ event_t::quote,		{ state_t::done,		std::bind(&string_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2)	} },
+			{ state_t::inside,		{	{ event_t::quote,		{ state_t::done,		std::bind(&string_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2)	} },
 										{ event_t::back_slash,	{ state_t::escape,		std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
 										{ event_t::symbol,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
@@ -350,29 +433,29 @@ struct json
 										{ event_t::alpha_r,		{ state_t::cr,			std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
 										{ event_t::alpha_t,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
 										{ event_t::alpha_u,		{ state_t::unicode_1,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::cr,			{	{ event_t::back_slash,	{ state_t::lf,			std::bind(&string_parser_t::on_escape,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::lf,			{	{ event_t::alpha_n,		{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::unicode_1,	{	{ event_t::hex_digit,	{ state_t::unicode_2,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::unicode_2,	{	{ event_t::hex_digit,	{ state_t::unicode_3,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::unicode_3,	{	{ event_t::hex_digit,	{ state_t::unicode_4,	std::bind(&string_parser_t::on_unicode,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 			{ state_t::unicode_4,	{	{ event_t::hex_digit,	{ state_t::inside,		std::bind(&string_parser_t::on_inside,	this, std::placeholders::_1, std::placeholders::_2)	} },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
-			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2)	} },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&string_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2)	} },
 			} },
 		} {};
 
@@ -380,34 +463,34 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_initial(const char&c, const int pos);
+		result_t on_initial(const symbol_t&c, const int pos);
 
-		result_t on_inside(const char&c, const int pos);
+		result_t on_inside(const symbol_t&c, const int pos);
 
-		result_t on_escape(const char&c, const int pos);
+		result_t on_escape(const symbol_t&c, const int pos);
 
-		result_t on_unicode(const char&c, const int pos);
+		result_t on_unicode(const symbol_t&c, const int pos);
 
-		result_t on_done(const char&c, const int pos);
+		result_t on_done(const symbol_t&c, const int pos);
 
-		result_t on_fail(const char&c, const int pos);
+		result_t on_fail(const symbol_t&c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
-		 std::optional<my_value_t> m_value;
+		 std::optional<string> m_value;
 	};
 #pragma endregion
 //
@@ -433,21 +516,18 @@ struct json
 		minus,		// -
 		plus,		// +
 		dec_zero,	// 0
-		dec_digit,			// 0x31 - 0x39
-		dot,			// .
+		dec_digit,	// 0x31 - 0x39
+		dot,		// .
 		exponent,	// E or 0x65 - e
 		symbol,
 	};
 
-	template <class StringT = std::string>
 	class number_parser_t
 		: public parser_impl<e_number_events, e_number_states, e_number_states::initial>
 	{
-		using string_t = StringT;
 		using event_t = e_number_events;
 		using state_t = e_number_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = std::variant<int64_t, uint64_t, int32_t, uint32_t, int16_t, uint16_t, int8_t, uint8_t, double, float>;
 		
 	public:
 		number_parser_t()
@@ -455,42 +535,42 @@ struct json
 		{
 			{ state_t::initial,			{	{ event_t::minus,		{ state_t::leading_minus,	std::bind(&number_parser_t::on_minus,		this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::dec_zero,	{ state_t::zero,			std::bind(&number_parser_t::on_zero,		this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	    this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::leading_minus,	{	{ event_t::dec_zero,	{ state_t::zero,			std::bind(&number_parser_t::on_zero,		this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	    this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::zero,			{	{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::zero,			{	{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		    this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::dot,				{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::dot,				{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::integer,			{	{ event_t::dec_zero,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::integer,			{	{ event_t::dec_zero,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	    this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::integer,			std::bind(&number_parser_t::on_integer,	    this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dot,			{ state_t::dot,				std::bind(&number_parser_t::on_dot,		    this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::fractional,		{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::fractional,		{	{ event_t::dec_zero,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::fractional,		std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::exponent,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exponent,	this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::exponent_delim,	{	{ event_t::minus,		{ state_t::exponent_sign,	std::bind(&number_parser_t::on_exp_sign,	this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::plus,		{ state_t::exponent_sign,	std::bind(&number_parser_t::on_exp_sign,	this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_zero,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_zero,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_delim,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::exponent_sign,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::exponent_sign,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::exponent_val,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
-											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value, this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::exponent_val,	{	{ event_t::dec_zero,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
+											{ event_t::dec_digit,	{ state_t::exponent_val,	std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
 											{ event_t::symbol,		{ state_t::done,			std::bind(&number_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::done,			{	{ event_t::symbol,		{ state_t::failure,			std::bind(&number_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
@@ -503,42 +583,42 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_initial(const unsigned char& c, const int pos);
+		result_t on_initial(const symbol_t& c, const int pos);
 
-		result_t on_minus(const unsigned char& c, const int pos);
+		result_t on_minus(const symbol_t& c, const int pos);
 
-		result_t on_integer(const unsigned char& c, const int pos);
+		result_t on_integer(const symbol_t& c, const int pos);
 
-		result_t on_fractional(const unsigned char& c, const int pos);
+		result_t on_fractional(const symbol_t& c, const int pos);
 
-		result_t on_exponent(const unsigned char& c, const int pos);
+		result_t on_exponent(const symbol_t& c, const int pos);
 
-		result_t on_exp_sign(const unsigned char& c, const int pos);
+		result_t on_exp_sign(const symbol_t& c, const int pos);
 
-		result_t on_exp_value(const unsigned char& c, const int pos);
+		result_t on_exp_value(const symbol_t& c, const int pos);
 
 
-		result_t on_zero(const unsigned char& c, const int pos);
+		result_t on_zero(const symbol_t& c, const int pos);
 
-		result_t on_dot(const unsigned char& c, const int pos);
+		result_t on_dot(const symbol_t& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const unsigned char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
-		static result_t append_digit(uint32_t& val, const unsigned char& c);
+		static result_t append_digit(integer_t& val, const symbol_t& c);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -554,13 +634,13 @@ struct json
 				, m_exponent_value(0)
 			{}
 
-			bool		m_positive;
-			uint32_t	m_integer;
-			uint32_t	m_fractional_value;
-			uint32_t	m_fractional_digits;
-			bool		m_has_exponent;
-			bool		m_exponent_positive;
-			uint32_t	m_exponent_value;
+			boolean_t	m_positive;
+			integer_t	m_integer;
+            integer_t	m_fractional_value;
+            integer_t	m_fractional_digits;
+            boolean_t   m_has_exponent;
+            boolean_t	m_exponent_positive;
+            integer_t	m_exponent_value;
 		};
 
 		std::optional<number> m_value;
@@ -588,17 +668,15 @@ struct json
 		other,
 	};
 
-	template <class StringT = std::string>
 	class null_parser_t
 		: public parser_impl<e_null_events, e_null_states, e_null_states::initial>
 	{
-		using string_t = StringT;
 		using event_t = e_null_events;
 		using state_t = e_null_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = nullptr_t;
-		//std::bind(&string_parser::on_initial, this, std::placeholders::_1, std::placeholders::_2)
-	public:
+		using my_value_t = null_t;
+
+    public:
 		null_parser_t()
 			: m_event_2_state_table
 		{
@@ -625,27 +703,27 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_n(const unsigned char& c, const int pos);
+		result_t on_n(const symbol_t& c, const int pos);
 
-		result_t on_u(const unsigned char& c, const int pos);
+		result_t on_u(const symbol_t& c, const int pos);
 
-		result_t on_l(const unsigned char& c, const int pos);
+		result_t on_l(const symbol_t& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const unsigned char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -682,15 +760,13 @@ struct json
 		symbol,
 	};
 
-	template <class StringT = std::string>
 	class bool_parser_t
 		: public parser_impl<e_bool_events, e_bool_states, e_bool_states::initial>
 	{
-		using string_t = StringT;
 		using event_t = e_bool_events;
 		using state_t = e_bool_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = bool;
+		using my_value_t = boolean_t;
 	public:
 		bool_parser_t()
 			: m_event_2_state_table
@@ -730,40 +806,40 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_t(const unsigned char& c, const int pos);
+		result_t on_t(const symbol_t& c, const int pos);
 
-		result_t on_r(const unsigned char& c, const int pos);
+		result_t on_r(const symbol_t& c, const int pos);
 
-		result_t on_u(const unsigned char& c, const int pos);
+		result_t on_u(const symbol_t& c, const int pos);
 
-		result_t on_f(const unsigned char& c, const int pos);
+		result_t on_f(const symbol_t& c, const int pos);
 
-		result_t on_a(const unsigned char& c, const int pos);
+		result_t on_a(const symbol_t& c, const int pos);
 
-		result_t on_l(const unsigned char& c, const int pos);
+		result_t on_l(const symbol_t& c, const int pos);
 
-		result_t on_s(const unsigned char& c, const int pos);
+		result_t on_s(const symbol_t& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const unsigned char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
-		std::string m_str;
+		string m_str;
 
 		std::optional<my_value_t> m_value;
 	};
@@ -785,16 +861,14 @@ struct json
 		nothing,
 	};
 
-	template <class StringT = std::string>
 	class value_parser_t
 		: public parser_impl<e_value_events, e_value_states, e_value_states::initial>
 	{
-		using string_t				= StringT;
 		using event_t				= e_value_events;
 		using state_t				= e_value_states;
 		using EventToStateTable_t	= StateTable<state_t, event_t>;
-		using ParserItem_t			= std::pair<bool, parser::ptr>;
-		using my_value_t			= value_t<>;
+		using ParserItem_t			= pair_t<boolean_t, parser::ptr>;
+		using my_value_t			= value;
 	public:
 		value_parser_t()
 			: m_event_2_state_table
@@ -814,23 +888,23 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& c) const override;
 
 		// Own methods
-		result_t on_data(const unsigned char& c, const int pos);
+		result_t on_data(const symbol_t& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const unsigned char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
@@ -862,39 +936,37 @@ struct json
 		nothing,	// no action event
 	};
 
-	template <class StringT = std::string>
 	class array_parser_t
 		: public parser_impl<e_array_events, e_array_states, e_array_states::initial>
 	{
-		using string_t = StringT;
 		using event_t = e_array_events;
 		using state_t = e_array_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = array_t<>;
+		using my_value_t = array;
 	public:
 		array_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,		{	{ event_t::arr_begin,	{ state_t::val_before,	std::bind(&array_parser_t::on_begin,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::initial,		{	{ event_t::arr_begin,	{ state_t::val_before,	std::bind(&array_parser_t::on_begin,    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_after,	{	{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::comma,		{ state_t::val_before,	std::bind(&array_parser_t::on_new,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::val_after,	{	{ event_t::arr_end,		{ state_t::done,		std::bind(&array_parser_t::on_done,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::comma,		{ state_t::val_before,	std::bind(&array_parser_t::on_new,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&array_parser_t::on_more,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::val_inside,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::val_done,	{ state_t::val_after,	std::bind(&array_parser_t::on_got_val,this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::val_error,	{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::val_inside,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&array_parser_t::on_val,	    this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_done,	{ state_t::val_after,	std::bind(&array_parser_t::on_got_val,  this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&array_parser_t::on_fail,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&array_parser_t::on_fail,	    this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
@@ -902,38 +974,38 @@ struct json
 		// Inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// Inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c) const override;
+		virtual event_t to_event(const symbol_t& c) const override;
 
 		virtual event_t to_event(const result_t& r) const override;
 
 		// Own methods
 		result_t on_more(const unsigned& c, const int pos);
 
-		result_t on_begin(const unsigned char& c, const int pos);
+		result_t on_begin(const symbol_t& c, const int pos);
 
-		result_t on_new(const unsigned char& c, const int pos);
+		result_t on_new(const symbol_t& c, const int pos);
 
 		result_t on_val(const unsigned& c, const int pos);
 
-		result_t on_got_val(const char& c, const int pos);
+		result_t on_got_val(const symbol_t& c, const int pos);
 
-		result_t on_done(const unsigned char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const unsigned char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
 		parser::ptr m_value_parser;
 
-		std::optional<array_t<>> m_value;
+		std::optional<array> m_value;
 	};
 #pragma endregion
 //
@@ -967,51 +1039,49 @@ struct json
 		nothing,		// no action event
 	};
 
-	template <class StringT = std::string>
 	class object_parser_t
 		: public parser_impl<e_object_events, e_object_states, e_object_states::initial>
 	{
-		using string_t = StringT;
 		using event_t = e_object_events;
 		using state_t = e_object_states;
 		using EventToStateTable_t = StateTable<state_t, event_t>;
-		using my_value_t = object_t<std::string>;
+		using my_value_t = object;
 	public:
 		// {ctor}
 		object_parser_t()
 			: m_event_2_state_table
 		{
-			{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	std::bind(&object_parser_t::on_begin,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::initial,		{	{ event_t::obj_begin,	{ state_t::key_before,	std::bind(&object_parser_t::on_begin,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_before,	{	{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::key_before,	{	{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 										{ event_t::symbol,		{ state_t::key_inside,	std::bind(&object_parser_t::on_key,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::key_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::key_before,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_inside,	{	{ event_t::key_done,	{ state_t::key_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::key_inside,	{	{ event_t::key_done,	{ state_t::key_after,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::key_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 										{ event_t::symbol,		{ state_t::key_inside,	std::bind(&object_parser_t::on_key,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::key_after,	{	{ event_t::colon,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::key_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::key_after,	{	{ event_t::colon,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::key_after,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::val_before,	{	{ event_t::symbol,		{ state_t::val_inside,	std::bind(&object_parser_t::on_val,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_before,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::val_inside,	{	{ event_t::val_done,	{ state_t::val_after,	std::bind(&object_parser_t::on_got_val,	this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::val_error,	{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 										{ event_t::symbol,		{ state_t::val_inside,	std::bind(&object_parser_t::on_val,		this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 			{ state_t::val_after,	{	{ event_t::comma,		{ state_t::key_before,	std::bind(&object_parser_t::on_new,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,		this, std::placeholders::_1, std::placeholders::_2) } },
-										{ event_t::skip,		{ state_t::val_after,	std::bind(&object_parser_t::on_more,		this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::obj_end,		{ state_t::done,		std::bind(&object_parser_t::on_done,	this, std::placeholders::_1, std::placeholders::_2) } },
+										{ event_t::skip,		{ state_t::val_after,	std::bind(&object_parser_t::on_more,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::done,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
-			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,		this, std::placeholders::_1, std::placeholders::_2) } },
+			{ state_t::failure,		{	{ event_t::symbol,		{ state_t::failure,		std::bind(&object_parser_t::on_fail,	this, std::placeholders::_1, std::placeholders::_2) } },
 			} },
 		} {};
 
@@ -1019,33 +1089,33 @@ struct json
 		// inherited via parser
 		virtual void reset() final;
 
-		virtual result_t putchar(const char& c, const int pos) final;
+		virtual result_t putchar(const symbol_t& c, const int pos) final;
 
 		virtual value get() const final;
 
 		// inherited via parser_impl
 		virtual const EventToStateTable_t& table() override;
 
-		virtual event_t to_event(const char& c)	  const override;
+		virtual event_t to_event(const symbol_t& c)	  const override;
 
 		virtual event_t to_event(const result_t& r) const override;
 
 		// own methods
-		result_t on_more(const char& c, const int pos);
+		result_t on_more(const symbol_t& c, const int pos);
 
-		result_t on_begin(const char& c, const int pos);
+		result_t on_begin(const symbol_t& c, const int pos);
 
-		result_t on_new(const char& c, const int pos);
+		result_t on_new(const symbol_t& c, const int pos);
 
-		result_t on_key(const char& c, const int pos);
+		result_t on_key(const symbol_t& c, const int pos);
 
-		result_t on_val(const char& c, const int pos);
+		result_t on_val(const symbol_t& c, const int pos);
 
-		result_t on_done(const char& c, const int pos);
+		result_t on_done(const symbol_t& c, const int pos);
 
-		result_t on_fail(const char& c, const int pos);
+		result_t on_fail(const symbol_t& c, const int pos);
 
-		result_t on_got_val(const char& c, const int pos);
+		result_t on_got_val(const symbol_t& c, const int pos);
 	protected:
 		const EventToStateTable_t m_event_2_state_table;
 
@@ -1058,32 +1128,34 @@ struct json
 //////////////////////////////////////////////////////////////////////////
 #pragma region -- factory --
  	/// creates object parser
- 	inline static parser::ptr create() 
+ 	inline static typename parser::ptr create() 
 	{ 
-		return json::parser::ptr(new object_parser_t<>()); 
+		return parser::ptr(new object_parser_t()); 
 	}
 #pragma endregion
 //////////////////////////////////////////////////////////////////////////
 };
 //////////////////////////////////////////////////////////////////////////
+using json = json_t<>;
+//////////////////////////////////////////////////////////////////////////
 #pragma region -- json data definition --
-template <class StringT, class KeyT>
-json::object_t<StringT, KeyT>::object_t(std::initializer_list<std::pair<KeyT, value>> l)
+JSON_TEMPLATE_PARAMS
+JSON_TEMPLATE_CLASS::object::object(std::initializer_list<JSON_TEMPLATE_CLASS::pair_t<typename JSON_TEMPLATE_CLASS::string, typename JSON_TEMPLATE_CLASS::value>> l)
 {
     for (auto arg : l)
         insert(arg);
 }
 
-template <class StringT, class KeyT>
-const StringT 
-json::object_t<StringT, KeyT>::str(std::stringstream& str)
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::string
+JSON_TEMPLATE_CLASS::object::str(typename JSON_TEMPLATE_CLASS::sstream& str)
 {
     // leading curly brace
     str << "{";
 
     for (auto it = begin(); it != end(); ++it)
     {
-        const bool last = (--end() == it);
+        const boolean_t last = (--end() == it);
 
         // key
         str << "\"" << it->first << "\":";
@@ -1092,22 +1164,22 @@ json::object_t<StringT, KeyT>::str(std::stringstream& str)
         switch ((vt)it->second.index())
         {
         case vt::t_string:
-            str << "\"" << std::get<StringT>(it->second) << "\"";
+            str << "\"" << std::get<string>(it->second) << "\"";
             break;
         case vt::t_object:
-            std::get<object_t>(it->second).str(str);
+            std::get<object>(it->second).str(str);
             break;
         case vt::t_array:
-            std::get<array_t<StringT>>(it->second).str(str);
+            std::get<array>(it->second).str(str);
             break;
         case vt::t_int64:
-            str << std::get<int64_t>(it->second);
+            str << std::get<integer_t>(it->second);
             break;
         case vt::t_floatingpt:
-            str << std::scientific << std::get<double>(it->second);
+            str << std::scientific << std::get<floatingpt_t>(it->second);
             break;
         case vt::t_boolean:
-            str << (std::get<bool>(it->second) ? "true" : "false");
+            str << (std::get<boolean_t>(it->second) ? "true" : "false");
             break;
         case vt::t_null:
             str << "null";
@@ -1127,44 +1199,44 @@ json::object_t<StringT, KeyT>::str(std::stringstream& str)
     return str.str();
 }
 
-template <class StringT>
-json::array_t<StringT>::array_t(std::initializer_list<value> l)
+JSON_TEMPLATE_PARAMS
+JSON_TEMPLATE_CLASS::array::array(std::initializer_list<value> l)
 {
     for (auto arg : l)
         push_back(arg);
 }
 
-template <class StringT>
-const StringT 
-json::array_t<StringT>::str(std::stringstream& str)
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::string
+JSON_TEMPLATE_CLASS::array::str(typename JSON_TEMPLATE_CLASS::sstream& str)
 {
     // leading curly brace
     str << "[";
 
     for (auto it = begin(); it != end(); ++it)
     {
-        const bool last = (--end() == it);
+        const boolean_t last = (--end() == it);
 
         // value
         switch ((vt)it->index())
         {
         case vt::t_string:
-            str << "\"" << std::get<std::string>(*it) << "\"";
+            str << "\"" << std::get<string>(*it) << "\"";
             break;
         case vt::t_object:
-            std::get<object_t<StringT, StringT>>(*it).str(str);
+            std::get<object>(*it).str(str);
             break;
         case vt::t_array:
-            std::get<array_t>(*it).str(str);
+            std::get<array>(*it).str(str);
             break;
         case vt::t_int64:
-            str << std::get<int64_t>(*it);
+            str << std::get<integer_t>(*it);
             break;
         case vt::t_floatingpt:
-            str << std::scientific << std::get<double>(*it);
+            str << std::scientific << std::get<floatingpt_t>(*it);
             break;
         case vt::t_boolean:
-            str << ((std::get<bool>(*it) ? "true" : "false"));
+            str << ((std::get<boolean_t>(*it) ? "true" : "false"));
             break;
         case vt::t_null:
             str << "null";
@@ -1186,24 +1258,24 @@ json::array_t<StringT>::str(std::stringstream& str)
 #pragma endregion
 //
 #pragma region -- string parser definition --
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::string_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::string_parser_t::reset()
 {
     state::set(state_t::initial);
     m_value.reset();
 };
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::putchar(const symbol_t& c, const int pos)
 {
     return parser_impl::step(to_event(c), c, pos);
 };
 
-template <class StringT>
-json::value
-json::string_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::string_parser_t::get() const
 {
     if (m_value.has_value())
         return *m_value;
@@ -1212,16 +1284,16 @@ json::string_parser_t<StringT>::get() const
     return value();
 };
 
-template <class StringT>
-const typename json::string_parser_t<StringT>::EventToStateTable_t&
-json::string_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::string_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::string_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::string_parser_t<StringT>::event_t
-json::string_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::string_parser_t::event_t
+JSON_TEMPLATE_CLASS::string_parser_t::to_event(const symbol_t& c) const
 {
     event_t smb = event_t::symbol;
     switch (state::get())
@@ -1277,23 +1349,23 @@ json::string_parser_t<StringT>::to_event(const char& c) const
     return smb;
 };
 
-template <class StringT>
-typename json::string_parser_t<StringT>::event_t
-json::string_parser_t<StringT>::to_event(const result_t& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::string_parser_t::event_t
+JSON_TEMPLATE_CLASS::string_parser_t::to_event(const result_t& c) const
 {
     return event_t::symbol;
 };
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_initial(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_initial(const symbol_t&c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_inside(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_inside(const symbol_t&c, const int pos)
 {
     if (!m_value.has_value())
         m_value.emplace();
@@ -1303,59 +1375,59 @@ json::string_parser_t<StringT>::on_inside(const char&c, const int pos)
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_escape(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_escape(const symbol_t&c, const int pos)
 {
     assert(m_value.has_value());
     (*m_value) += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_unicode(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_unicode(const symbol_t&c, const int pos)
 {
     assert(m_value.has_value());
     (*m_value) += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_done(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_done(const symbol_t&c, const int pos)
 {
     return result_t::s_done;
 }
 
-template <class StringT>
-json::result_t
-json::string_parser_t<StringT>::on_fail(const char&c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::string_parser_t::on_fail(const symbol_t&c, const int pos)
 {
     return result_t::e_unexpected;
 }
 #pragma endregion
 //
 #pragma region -- number parser definition --
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::number_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::number_parser_t::reset()
 {
     state::set(state_t::initial);
 
     m_value.reset();
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::putchar(const symbol_t& c, const int pos)
 {
     return parser_impl::step(to_event(c), c, pos);
 }
 
-template <class StringT>
-json::value
-json::number_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::number_parser_t::get() const
 {
     if (m_value.has_value())
     {
@@ -1389,17 +1461,16 @@ json::number_parser_t<StringT>::get() const
     return value();
 };
 
-// Inherited via parser_impl
-template <class StringT>
-const typename json::number_parser_t<StringT>::EventToStateTable_t&
-json::number_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::number_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::number_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::number_parser_t<StringT>::event_t
-json::number_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::number_parser_t::event_t
+JSON_TEMPLATE_CLASS::number_parser_t::to_event(const symbol_t& c) const
 {
     if (0x2D == c)
         return event_t::minus;
@@ -1417,24 +1488,24 @@ json::number_parser_t<StringT>::to_event(const char& c) const
     return event_t::symbol;
 };
 
-template <class StringT>
-typename json::number_parser_t<StringT>::event_t
-json::number_parser_t<StringT>::to_event(const result_t& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::number_parser_t::event_t
+JSON_TEMPLATE_CLASS::number_parser_t::to_event(const result_t& c) const
 {
     return event_t::symbol;
 };
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_initial(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_initial(const symbol_t& c, const int pos)
 {
     // TODO: use symbol
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_minus(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_minus(const symbol_t& c, const int pos)
 {
     if (!m_value.has_value())
         m_value.emplace();
@@ -1444,9 +1515,9 @@ json::number_parser_t<StringT>::on_minus(const unsigned char& c, const int pos)
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_integer(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_integer(const symbol_t& c, const int pos)
 {
     if (!m_value.has_value())
         m_value.emplace();
@@ -1455,9 +1526,9 @@ json::number_parser_t<StringT>::on_integer(const unsigned char& c, const int pos
     return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_fractional(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_fractional(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
     const result_t res = append_digit((*m_value).m_fractional_value, c);
@@ -1465,18 +1536,18 @@ json::number_parser_t<StringT>::on_fractional(const unsigned char& c, const int 
     return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_exponent(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_exponent(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
     (*m_value).m_has_exponent = true;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_exp_sign(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_exp_sign(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
 
@@ -1492,19 +1563,18 @@ json::number_parser_t<StringT>::on_exp_sign(const unsigned char& c, const int po
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_exp_value(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_exp_value(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
     const result_t res = append_digit((*m_value).m_exponent_value, c);
     return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
-
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_zero(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_zero(const symbol_t& c, const int pos)
 {
 
     const state_t s = state::get();
@@ -1535,30 +1605,30 @@ json::number_parser_t<StringT>::on_zero(const unsigned char& c, const int pos)
     return result_t::s_ok == res ? result_t::s_need_more : res;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_dot(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_dot(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_done(const symbol_t& c, const int pos)
 {
     return result_t::s_done_rpt;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     return result_t::e_unexpected;
 }
 
-template <class StringT>
-json::result_t
-json::number_parser_t<StringT>::append_digit(uint32_t& val, const unsigned char& c)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::number_parser_t::append_digit(integer_t& val, const symbol_t& c)
 {
     if (c < 0x30 || 0x39 < c)
         return result_t::e_fatal;
@@ -1583,24 +1653,24 @@ json::number_parser_t<StringT>::append_digit(uint32_t& val, const unsigned char&
 #pragma endregion
 //
 #pragma region -- null parser definition -- 
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::null_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::null_parser_t::reset()
 {
     state::set(state_t::initial);
     m_value.reset();
 }
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::putchar(const symbol_t& c, const int pos)
 {
     return parser_impl::step(to_event(c), c, pos);
 }
 
-template <class StringT>
-json::value
-json::null_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::null_parser_t::get() const
 {
     if (m_value.has_value())
         return *m_value;
@@ -1609,16 +1679,16 @@ json::null_parser_t<StringT>::get() const
     return value();
 };
 
-template <class StringT>
-const typename json::null_parser_t<StringT>::EventToStateTable_t&
-json::null_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::null_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::null_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::null_parser_t<StringT>::event_t
-json::null_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::null_parser_t::event_t
+JSON_TEMPLATE_CLASS::null_parser_t::to_event(const symbol_t& c) const
 {
     switch (c)
     {
@@ -1633,37 +1703,37 @@ json::null_parser_t<StringT>::to_event(const char& c) const
     return event_t::other;
 }
 
-template <class StringT>
-typename json::null_parser_t<StringT>::event_t
-json::null_parser_t<StringT>::to_event(const result_t& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::null_parser_t::event_t
+JSON_TEMPLATE_CLASS::null_parser_t::to_event(const result_t& c) const
 {
     return event_t::other;
 }
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::on_n(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::on_n(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::on_u(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::on_u(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::on_l(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::on_l(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::on_done(const symbol_t& c, const int pos)
 {
     if (!m_value.has_value())
         m_value.emplace();
@@ -1673,34 +1743,34 @@ json::null_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
     return result_t::s_done;
 };
 
-template <class StringT>
-json::result_t
-json::null_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::null_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     return result_t::e_unexpected;
 }
 #pragma endregion
 //
 #pragma region -- bool parser definition -- 
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::bool_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::bool_parser_t::reset()
 {
     state::set(state_t::initial);
     m_str.clear();
     m_value.reset();
 };
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::putchar(const symbol_t& c, const int pos)
 {
     return parser_impl::step(to_event(c), c, pos);
 };
 
-template <class StringT>
-json::value
-json::bool_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::bool_parser_t::get() const
 {
     if (m_value.has_value())
         return *m_value;
@@ -1709,16 +1779,16 @@ json::bool_parser_t<StringT>::get() const
     return value();
 };
 
-template <class StringT>
-const typename json::bool_parser_t<StringT>::EventToStateTable_t&
-json::bool_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::bool_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::bool_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::bool_parser_t<StringT>::event_t
-json::bool_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::bool_parser_t::event_t
+JSON_TEMPLATE_CLASS::bool_parser_t::to_event(const symbol_t& c) const
 {
     switch (c)
     {
@@ -1742,76 +1812,76 @@ json::bool_parser_t<StringT>::to_event(const char& c) const
     return event_t::symbol;
 };
 
-template <class StringT>
-typename json::bool_parser_t<StringT>::event_t
-json::bool_parser_t<StringT>::to_event(const result_t& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::bool_parser_t::event_t
+JSON_TEMPLATE_CLASS::bool_parser_t::to_event(const result_t& c) const
 {
     return event_t::symbol;
 };
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_t(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_t(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_r(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_r(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_u(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_u(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_f(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_f(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_a(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_a(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_l(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_l(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_s(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_s(const symbol_t& c, const int pos)
 {
     m_str += c;
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_done(const symbol_t& c, const int pos)
 {
     m_str += c;
 
-    auto update = [this](const bool val)->result_t
+    auto update = [this](const boolean_t val)->result_t
     {
         if (!m_value.has_value())
             m_value.emplace();
@@ -1831,27 +1901,27 @@ json::bool_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
     return result_t::e_unexpected;
 }
 
-template <class StringT>
-json::result_t
-json::bool_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::bool_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     return result_t::e_unexpected;
 }
 #pragma endregion
 //
 #pragma region -- value parser definition --
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::value_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::value_parser_t::reset()
 {
     state::set(state_t::initial);
     for (ParserItem_t& p : parsing_unit)
         p.first = true, p.second->reset();
 };
 
-template <class StringT>
-json::result_t
-json::value_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::value_parser_t::putchar(const symbol_t& c, const int pos)
 {
     result_t r = parser_impl::step(to_event(c), c, pos);
 
@@ -1865,9 +1935,9 @@ json::value_parser_t<StringT>::putchar(const char& c, const int pos)
     return r;
 };
 
-template <class StringT>
-json::value
-json::value_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::value_parser_t::get() const
 {
     for (auto cit = parsing_unit.cbegin(); cit != parsing_unit.cend(); ++cit)
     {
@@ -1881,23 +1951,23 @@ json::value_parser_t<StringT>::get() const
     return value();
 };
 
-template <class StringT>
-const typename json::value_parser_t<StringT>::EventToStateTable_t&
-json::value_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::value_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::value_parser_t::table()
 {
     return m_event_2_state_table;
 };
 
-template <class StringT>
-typename json::value_parser_t<StringT>::event_t
-json::value_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value_parser_t::event_t
+JSON_TEMPLATE_CLASS::value_parser_t::to_event(const symbol_t& c) const
 {
     return event_t::symbol;
 };
 
-template <class StringT>
-typename json::value_parser_t<StringT>::event_t
-json::value_parser_t<StringT>::to_event(const result_t& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value_parser_t::event_t
+JSON_TEMPLATE_CLASS::value_parser_t::to_event(const result_t& c) const
 {
     switch (state::get())
     {
@@ -1910,24 +1980,24 @@ json::value_parser_t<StringT>::to_event(const result_t& c) const
     return event_t::nothing;
 };
 
-template <class StringT>
-json::result_t
-json::value_parser_t<StringT>::on_data(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::value_parser_t::on_data(const symbol_t& c, const int pos)
 {
     result_t res = result_t::e_fatal;
     uint8_t parsers_in_work = 0;
 
     if (parsing_unit.empty())
     {
-        parsing_unit.push_back(ParserItem_t(true, new null_parser_t<StringT>()));
-        parsing_unit.push_back(ParserItem_t(true, new bool_parser_t<StringT>()));
-        parsing_unit.push_back(ParserItem_t(true, new string_parser_t<StringT>()));
-        parsing_unit.push_back(ParserItem_t(true, new number_parser_t<StringT>()));
-        parsing_unit.push_back(ParserItem_t(true, new array_parser_t<StringT>()));
-        parsing_unit.push_back(ParserItem_t(true, new object_parser_t<StringT>()));
+        parsing_unit.push_back(ParserItem_t(true, new null_parser_t()));
+        parsing_unit.push_back(ParserItem_t(true, new bool_parser_t()));
+        parsing_unit.push_back(ParserItem_t(true, new string_parser_t()));
+        parsing_unit.push_back(ParserItem_t(true, new number_parser_t()));
+        parsing_unit.push_back(ParserItem_t(true, new array_parser_t()));
+        parsing_unit.push_back(ParserItem_t(true, new object_parser_t()));
     }
 
-    for (std::pair<bool, parser::ptr>& p : parsing_unit)
+    for (std::pair<boolean_t, parser::ptr>& p : parsing_unit)
     {
         if (true == p.first)
         {
@@ -1946,39 +2016,39 @@ json::value_parser_t<StringT>::on_data(const unsigned char& c, const int pos)
     return res;
 }
 
-template <class StringT>
-json::result_t
-json::value_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::value_parser_t::on_done(const symbol_t& c, const int pos)
 {
     return result_t::s_done;
 }
 
-template <class StringT>
-json::result_t
-json::value_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::value_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     return result_t::e_unexpected;
 }
 #pragma endregion
 //
 #pragma region -- array parser definition -- 
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::array_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::array_parser_t::reset()
 {
     state::set(state_t::initial);
 
     if (!m_value_parser)
-        m_value_parser.reset(new value_parser_t<StringT>());
+        m_value_parser.reset(new value_parser_t());
 
     m_value_parser->reset();
 
     m_value.reset();
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::putchar(const symbol_t& c, const int pos)
 {
     result_t r = parser_impl::step(to_event(c), c, pos);
 
@@ -2002,9 +2072,9 @@ json::array_parser_t<StringT>::putchar(const char& c, const int pos)
     return r;
 }
 
-template <class StringT>
-json::value
-json::array_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::array_parser_t::get() const
 {
     if (m_value.has_value())
         return *m_value;
@@ -2013,19 +2083,18 @@ json::array_parser_t<StringT>::get() const
     return value();
 }
 
-// Inherited via parser_impl
-template <class StringT>
-const typename json::array_parser_t<StringT>::EventToStateTable_t&
-json::array_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::array_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::array_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::array_parser_t<StringT>::event_t
-json::array_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::array_parser_t::event_t
+JSON_TEMPLATE_CLASS::array_parser_t::to_event(const symbol_t& c) const
 {
-    auto is_space = [](const char& c)->bool
+    auto is_space = [](const symbol_t& c)->boolean_t
     {
         // space, tab, cr, lf
         return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
@@ -2058,9 +2127,9 @@ json::array_parser_t<StringT>::to_event(const char& c) const
     return event_t::symbol;
 }
 
-template <class StringT>
-typename json::array_parser_t<StringT>::event_t
-json::array_parser_t<StringT>::to_event(const result_t& r) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::array_parser_t::event_t
+JSON_TEMPLATE_CLASS::array_parser_t::to_event(const result_t& r) const
 {
     switch (state::get())
     {
@@ -2073,17 +2142,16 @@ json::array_parser_t<StringT>::to_event(const result_t& r) const
     return event_t::nothing;
 }
 
-// Own methods
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_more(const unsigned& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_more(const unsigned& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_begin(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_begin(const symbol_t& c, const int pos)
 {
     if (!m_value.has_value())
         m_value.emplace();
@@ -2091,23 +2159,23 @@ json::array_parser_t<StringT>::on_begin(const unsigned char& c, const int pos)
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_new(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_new(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_val(const unsigned& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_val(const unsigned& c, const int pos)
 {
     return m_value_parser->putchar(c, pos);
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_got_val(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_got_val(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
 
@@ -2120,46 +2188,46 @@ json::array_parser_t<StringT>::on_got_val(const char& c, const int pos)
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_done(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_done(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
 
     return result_t::s_done;
 }
 
-template <class StringT>
-json::result_t
-json::array_parser_t<StringT>::on_fail(const unsigned char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::array_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     return result_t::e_unexpected;
 }
 #pragma endregion
 //
 #pragma region -- object parser definition --
-template <class StringT>
+JSON_TEMPLATE_PARAMS
 void
-json::object_parser_t<StringT>::reset()
+JSON_TEMPLATE_CLASS::object_parser_t::reset()
 {
     state::set(state_t::initial);
 
     if (!m_key_parser)
-        m_key_parser.reset(new string_parser_t<StringT>());
+        m_key_parser.reset(new string_parser_t());
     else
         m_key_parser->reset();
 
     if (!m_val_parser)
-        m_val_parser.reset(new value_parser_t<StringT>());
+        m_val_parser.reset(new value_parser_t());
     else
         m_val_parser->reset();
 
     m_value.reset();
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::putchar(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::putchar(const symbol_t& c, const int pos)
 {
     result_t r = parser_impl::step(to_event(c), c, pos);
 
@@ -2183,9 +2251,9 @@ json::object_parser_t<StringT>::putchar(const char& c, const int pos)
     return r;
 };
 
-template <class StringT>
-json::value
-json::object_parser_t<StringT>::get() const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::value
+JSON_TEMPLATE_CLASS::object_parser_t::get() const
 {
     if (m_value.has_value())
         return *m_value;
@@ -2194,19 +2262,18 @@ json::object_parser_t<StringT>::get() const
     return value();
 };
 
-// inherited via parser_impl
-template <class StringT>
-const typename json::object_parser_t<StringT>::EventToStateTable_t&
-json::object_parser_t<StringT>::table()
+JSON_TEMPLATE_PARAMS
+const typename JSON_TEMPLATE_CLASS::object_parser_t::EventToStateTable_t&
+JSON_TEMPLATE_CLASS::object_parser_t::table()
 {
     return m_event_2_state_table;
 }
 
-template <class StringT>
-typename json::object_parser_t<StringT>::event_t
-json::object_parser_t<StringT>::to_event(const char& c) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::object_parser_t::event_t
+JSON_TEMPLATE_CLASS::object_parser_t::to_event(const symbol_t& c) const
 {
-    auto is_space = [](const char& c)->bool
+    auto is_space = [](const symbol_t& c)->boolean_t
     {
         // space, tab, cr, lf
         return (0x20 == c || 0x09 == c || 0x0A == c || 0x0D == c);
@@ -2249,9 +2316,9 @@ json::object_parser_t<StringT>::to_event(const char& c) const
     return event_t::symbol;
 };
 
-template <class StringT>
-typename json::object_parser_t<StringT>::event_t
-json::object_parser_t<StringT>::to_event(const result_t& r) const
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::object_parser_t::event_t
+JSON_TEMPLATE_CLASS::object_parser_t::to_event(const result_t& r) const
 {
     switch (state::get())
     {
@@ -2268,22 +2335,22 @@ json::object_parser_t<StringT>::to_event(const result_t& r) const
     return event_t::nothing;
 };
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_more(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_more(const symbol_t& c, const int pos)
 {
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_begin(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_begin(const symbol_t& c, const int pos)
 {
     if (!m_key_parser)
-        m_key_parser.reset(new string_parser_t<StringT>());
+        m_key_parser.reset(new string_parser_t());
 
     if (!m_val_parser)
-        m_val_parser.reset(new value_parser_t<StringT>());
+        m_val_parser.reset(new value_parser_t());
 
     if (!m_value.has_value())
         m_value.emplace();
@@ -2291,59 +2358,59 @@ json::object_parser_t<StringT>::on_begin(const char& c, const int pos)
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_new(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_new(const symbol_t& c, const int pos)
 {
     if (!m_key_parser)
-        m_key_parser.reset(new string_parser_t<StringT>());
+        m_key_parser.reset(new string_parser_t());
     else
         m_key_parser->reset();
 
     if (!m_val_parser)
-        m_val_parser.reset(new value_parser_t<StringT>());
+        m_val_parser.reset(new value_parser_t());
     else
         m_val_parser->reset();
 
     return result_t::s_need_more;
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_key(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_key(const symbol_t& c, const int pos)
 {
     return m_key_parser->putchar(c, pos);
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_val(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_val(const symbol_t& c, const int pos)
 {
     return m_val_parser->putchar(c, pos);
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_done(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_done(const symbol_t& c, const int pos)
 {
     return result_t::s_done;
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_fail(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_fail(const symbol_t& c, const int pos)
 {
     m_value.reset();
     return result_t::e_unexpected;
 }
 
-template <class StringT>
-json::result_t
-json::object_parser_t<StringT>::on_got_val(const char& c, const int pos)
+JSON_TEMPLATE_PARAMS
+typename JSON_TEMPLATE_CLASS::result_t
+JSON_TEMPLATE_CLASS::object_parser_t::on_got_val(const symbol_t& c, const int pos)
 {
     assert(m_value.has_value());
 
-    const string_t key = std::get<string_t>(m_key_parser->get());
+    const string key = std::get<string>(m_key_parser->get());
     const value val = m_val_parser->get();
 
     (*m_value)[key] = val;
@@ -2351,5 +2418,8 @@ json::object_parser_t<StringT>::on_got_val(const char& c, const int pos)
     return result_t::s_need_more;
 }
 #pragma endregion
+
+#undef JSON_TEMPLATE_PARAMS
+#undef JSON_TEMPLATE_CLASS
 
 #endif // __JSON_LIB_H__
