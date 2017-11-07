@@ -44,6 +44,39 @@ struct json
 	inline static bool failed(const result_t& r) { return r < result_t::s_ok; }
 	inline static bool succeded(const result_t& r) { return r >= result_t::s_ok; }
 
+    static result_t parse(std::istream& input, json::object_t<>& jsobj)
+    {
+        char c = 0;
+        result_t result = result_t::s_ok;
+
+        parser::ptr p = create();
+        if (!p)
+            return result_t::e_fatal;
+
+        while (input >> std::noskipws >> c || result != json::result_t::s_done)
+        {
+            result = p->putchar(c, (int)input.tellg() - 1);
+
+            if (result_t::s_ok > result)
+                break;
+
+            if (result_t::s_done == result)
+            {
+                jsobj = std::get<json::object_t<>>(p->get());
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    static result_t parse(const std::string& input, json::object_t<>& jsobj)
+    {
+        std::stringstream sstr;
+        sstr.str(input);
+        return parse(sstr, jsobj);
+    }
+
 #pragma region -- value definition --
 	template<class StringT = std::string, class ObjectT = object_t<StringT, StringT>, class ArrayT = array_t<StringT>, class IntNumT = int64_t, class RealNumT = double, class BooleanT = bool, class NullT = nullptr_t>
 	struct value_t

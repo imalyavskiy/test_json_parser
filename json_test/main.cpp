@@ -25,68 +25,6 @@ bool read_cmd_line(int argc, char** argv, std::string& source_file)
 	return true;
 }
 
-void print_symbol(const unsigned char& c)
-{
-	std::cout << "0x" << std::hex << std::setw(2) << std::setfill('0') << (int)c << std::resetiosflags(std::ios_base::basefield);
-	
-	if (c <= 0x1F)
-		std::cout << "    ";
-	else
-		std::cout << " \'" << c << "\'";
-	
-	std::cout << std::endl;
-}
-
-json::result_t
-process(/*const */std::istream& input, json::object_t<>& jsobj)
-{
-	char c = 0;
-	json::result_t result = json::result_t::s_ok;
-
-	json::parser::ptr p = json::create();
-	if (!p)
-		return result_t::e_fatal;
-
-	int pos = 0;
-
-	while (input >> std::noskipws >> c || result != json::result_t::s_done)
-	{
-		//print_symbol(c);
-
-		pos = (int)input.tellg() - 1;
-
-		result = p->putchar(c, pos);
-
-		if (json::result_t::s_ok > result)
-		{
-			std::cout << "Error while parsing: reason \'" << c << "\' at " << pos << std::endl;
-			break;
-		}
-
-		if(json::result_t::s_done == result)
-		{
-			//std::cout << "Success" << std::endl;
-
-			json::value val = p->get();
-			json::object_t<> obj = std::get<json::object_t<>>(val);
-
-			std::cout << obj.str() << std::endl;
-
-			break;
-		}
-	}
-
-	return result;
-}
-
-json::result_t
-process(const std::string& input, json::object_t<>& jsobj)
-{
-	std::stringstream sstr;
-	sstr.str(input);
-	return process(sstr, jsobj);
-}
-
 int parser_main(int argc, char** argv)
 {
 	json::result_t res = json::result_t::s_ok;
@@ -97,7 +35,9 @@ int parser_main(int argc, char** argv)
 
 	std::ifstream source_file(source_file_name, std::ios::in);
 	json::object_t<> jsobj;
-	res = process(source_file, jsobj);
+	res = json::parse(source_file, jsobj);
+
+    std::cout << jsobj.str() << std::endl;
 
 	source_file.close();
 
@@ -131,7 +71,7 @@ int parser_main(int argc, char** argv)
 	}
 }
 */
-const std::string& json_data_structure_2(std::string& str)
+const std::string& json_data_structure_2(std::string& str = std::string())
 {
 	using obj = json::object_t<>;
 	using arr = json::array_t<>;
@@ -170,7 +110,7 @@ const std::string& json_data_structure_2(std::string& str)
 	return str;
 }
 
-const std::string& json_data_structure_1(std::string& str)
+const std::string& json_data_structure_1(std::string& str = std::string())
 {
 	json::array_t<> GlossSeeAlso;
 	GlossSeeAlso.push_back("GML");
@@ -209,24 +149,11 @@ const std::string& json_data_structure_1(std::string& str)
 	return str;
 }
 
-
-
-int json_data_structure_main(int argc, char** argv)
-{
-	std::string str1;
-	std::string str2;
-	
-	json_data_structure_2(str1);
-	json_data_structure_2(str2);
-
-	const bool result = (str1 == str2);
-	assert(result);
-
-	return result;
-};
-
 int main(int argc, char** argv)
 {
+    bool result = json_data_structure_1() == json_data_structure_2();
+    assert(true == result);
+
 	parser_main(argc, argv);
 
 	return 1;
