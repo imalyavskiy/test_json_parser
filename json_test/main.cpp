@@ -2,7 +2,8 @@
 //
 #include "../json_lib/json_lib.h"
 
-typedef json::result_t result_t;
+typedef imalyavskiy::json::result_t result_t;
+using json = imalyavskiy::json;
 
 bool read_cmd_line(int argc, char** argv, std::string& source_file)
 {
