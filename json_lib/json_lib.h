@@ -50,11 +50,17 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <optional>
 #include <sstream>
 #include <string>
-#include <variant>
 #include <vector>
+
+#if _HAS_CXX17
+#include <optional>
+#include <variant>
+#else 
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
+#endif
 
 #define JSON_TEMPLATE_PARAMS                                              \
 template <                                                                \
@@ -122,6 +128,7 @@ namespace imalyavskiy
     >
     class json_t
     {
+    public:
         using symbol_t          = SymbolT;
         using integer_t         = IntegerT;
         using floatingpt_t      = FloatingPtT;
@@ -152,12 +159,11 @@ namespace imalyavskiy
             using istream_t     = IStrmT<_Elem, _Traits>;
             using istream = istream_t<symbol_t>;
 
-    public:
         /// Forward declaration for JSON object data structure
-        class object;
+        class obj;
 
         /// Forward declaration for JSON array data structure
-        class array;
+        class arr;
 
         /// possible results
         enum class result_t
@@ -173,7 +179,7 @@ namespace imalyavskiy
         inline static boolean_t failed(const result_t& r) { return r < result_t::s_ok; }
         inline static boolean_t succeded(const result_t& r) { return r >= result_t::s_ok; }
 
-        static result_t parse(istream& input, object& jsobj)
+        static result_t parse(istream& input, obj& jsobj)
         {
             symbol_t c = 0;
             result_t result = result_t::s_ok;
@@ -182,7 +188,7 @@ namespace imalyavskiy
             if (!p)
                 return result_t::e_fatal;
 
-            while (input >> std::noskipws >> c || result != json::result_t::s_done)
+            while (input >> std::noskipws >> c || result != result_t::s_done)
             {
                 result = p->putchar(c, (int)input.tellg() - 1);
 
@@ -191,7 +197,7 @@ namespace imalyavskiy
 
                 if (result_t::s_done == result)
                 {
-                    jsobj = std::get<object>(p->get());
+                    jsobj = p->get().get<obj>();
                     break;
                 }
             }
@@ -199,7 +205,7 @@ namespace imalyavskiy
             return result;
         }
 
-        static result_t parse(const string& input, object& jsobj)
+        static result_t parse(const string& input, obj& jsobj)
         {
             sstream sstr;
             sstr.str(input);
@@ -208,9 +214,17 @@ namespace imalyavskiy
 
     #pragma region -- value definition --
         class value
-            : public std::variant<string, object, array, integer_t, floatingpt_t, boolean_t, null_t>
+#if _HAS_CXX17
+            : public std::variant<string, obj, arr, integer_t, floatingpt_t, boolean_t, null_t>
+#else
+            : public boost::variant<string, obj, arr, integer_t, floatingpt_t, boolean_t, null_t>
+#endif
         {
-            using base_t = std::variant<string, object, array, integer_t, floatingpt_t, boolean_t, null_t>;
+#if _HAS_CXX17
+            using base_t = std::variant<string, obj, arr, integer_t, floatingpt_t, boolean_t, null_t>;
+#else
+            using base_t = boost::variant<string, obj, arr, integer_t, floatingpt_t, boolean_t, null_t>;
+#endif
         public:
             /// The enumeration for mnemonic correlation of indeces and types used for std::variant
             enum class vt
@@ -227,13 +241,31 @@ namespace imalyavskiy
             /// {ctor}s
             value() { }
             value(const string& other)      : base_t(other)         {}
-            value(const object& other)      : base_t(other)         {}
-            value(const array&  other)      : base_t(other)         {}
+            value(const obj& other)         : base_t(other)         {}
+            value(const arr&  other)        : base_t(other)         {}
             value(const integer_t   other)  : base_t(other)         {}
             value(const floatingpt_t other) : base_t(other)         {}
             value(const boolean_t other)    : base_t(other)         {}
             value(const symbol_t* other)    : base_t(string(other)) {}
             value(const null_t other)       : base_t(other)         {}
+
+#if _HAS_CXX17
+            vt index() const {
+                return (vt)base_t::index();
+            }
+            template <class T>
+            T get(T* t = nullptr) const {
+                return std::get<T>(*this);
+            }
+#else            
+            vt index() const {
+                return (vt)base_t::which();
+            }
+            template <class T>
+            T get(T* t = nullptr) const {
+                return boost::get<T>(*this);
+            }
+#endif
 
             /// Assign operators
             const value& operator=(const string& other)
@@ -242,13 +274,13 @@ namespace imalyavskiy
                 return (*this);
             }
 
-            const value& operator=(const object& other)
+            const value& operator=(const obj& other)
             {
                 base_t::operator=(other);
                 return (*this);
             }
 
-            const value& operator=(const array& other)
+            const value& operator=(const arr& other)
             {
                 base_t::operator=(other);
                 return (*this);
@@ -274,7 +306,7 @@ namespace imalyavskiy
 
             const value& operator=(const symbol_t* other)
             {
-                base_t::operator=(StringT(other));
+                base_t::operator=(string(other));
                 return (*this);
             }
 
@@ -284,13 +316,70 @@ namespace imalyavskiy
                 return (*this);
             }
 
-            inline bool is_string()     const { return vt::t_string     == std::variant::index(); }
-            inline bool is_object()     const { return vt::t_object     == std::variant::index(); }
-            inline bool is_array()      const { return vt::t_array      == std::variant::index(); }
-            inline bool is_integer()    const { return vt::t_integer    == std::variant::index(); }
-            inline bool is_floatingpt() const { return vt::t_floatingpt == std::variant::index(); }
-            inline bool is_boolean()    const { return vt::t_boolean    == std::variant::index(); }
-            inline bool is_null()       const { return vt::t_null       == std::variant::index(); }
+            inline bool is_string()     const { return vt::t_string     == index(); }
+            inline bool is_object()     const { return vt::t_object     == index(); }
+            inline bool is_array()      const { return vt::t_array      == index(); }
+            inline bool is_integer()    const { return vt::t_integer    == index(); }
+            inline bool is_floatingpt() const { return vt::t_floatingpt == index(); }
+            inline bool is_number()     const { return is_integer() || is_floatingpt(); };
+            inline bool is_boolean()    const { return vt::t_boolean    == index(); }
+            inline bool is_null()       const { return vt::t_null       == index(); }
+
+            operator string() const
+            {
+                if (index() != vt::t_string)
+                    assert(0);
+
+                return get<string>();
+            }
+
+            operator obj() const
+            {
+                if (index() != vt::t_object)
+                    assert(0);
+
+                return get<obj>();
+            }
+
+            operator arr() const
+            {
+                if (index() != vt::t_array)
+                    assert(0);
+
+                return get<arr>();
+            }
+
+            operator integer_t() const
+            {
+                if (index() != vt::t_integer)
+                    assert(0);
+
+                return get<integer_t>();
+            }
+
+            operator floatingpt_t() const
+            {
+                if (index() != vt::t_floatingpt)
+                    assert(0);
+
+                return get<floatingpt_t>();
+            }
+
+            operator boolean_t() const
+            {
+                if (index() != vt::t_boolean)
+                    assert(0);
+
+                return get<boolean_t>();
+            }
+
+            operator null_t() const
+            {
+                if (index() != vt::t_null)
+                    assert(0);
+
+                return get<null_t>();
+            }
         };
 
     #pragma endregion
@@ -310,26 +399,26 @@ namespace imalyavskiy
         };
 
         /// Declaration of the object JSON data structure
-        class object 
+        class obj 
             : public container<map_t<string, value>>
         {
         public:
             /// {ctor}s
-            object() = default;
-            object(std::initializer_list<pair_t<string, value>> l);
+            obj() = default;
+            obj(std::initializer_list<pair_t<string, value>> l);
 
             /// serialization
             virtual const string str(sstream& str = sstream()) final;
         };
 
         /// Declaration of the array JSON data structure
-        class array 
+        class arr 
             : public container<vector_t<value>>
         {
         public:
             /// {ctor}s
-            array() = default;
-            array(std::initializer_list<value> l);
+            arr() = default;
+            arr(std::initializer_list<value> l);
 
             /// serialization
             virtual const string str(sstream& str = sstream()) final;
@@ -389,14 +478,14 @@ namespace imalyavskiy
             void set(STATE new_state) { m_state = new_state; }
         };
 
-        template<typename EventsType, typename StateType, StateType initial_state>
+        template<class ValueT, class EventsT, class StateT, StateT initial_state>
         class parser_impl
-            : protected state<StateType, initial_state>
+            : protected state<StateT, initial_state>
             , public parser
         {
         public:
-            using event_t = EventsType;
-            using StateTable_t = StateTable<StateType, EventsType>;
+            using event_t = EventsT;
+            using StateTable_t = StateTable<StateT, EventsT>;
 
             parser_impl() {};
 
@@ -423,6 +512,28 @@ namespace imalyavskiy
             virtual event_t to_event(const result_t& c) const = 0;
 
             virtual const StateTable_t& table() = 0;
+
+            template <class V>
+            class optional
+                : public
+#if _HAS_CXX17
+                std::optional<V>
+#else
+                boost::optional<V>
+#endif
+            {
+            public:
+                operator bool() const
+                {
+#if _HAS_CXX17
+                    return has_value();
+#else
+                    return is_initialized();
+#endif
+                }
+            };
+            
+            optional<ValueT> m_value;
         };
     #pragma endregion
     //////////////////////////////////////////////////////////////////////////
@@ -458,7 +569,7 @@ namespace imalyavskiy
         };
 
         class string_parser_t
-            : public parser_impl<e_string_events, e_string_states, e_string_states::initial>
+            : public parser_impl<string, e_string_events, e_string_states, e_string_states::initial>
         {
         public:
             using event_t               = e_string_events;
@@ -540,8 +651,6 @@ namespace imalyavskiy
 
         protected:
             const EventToStateTable_t m_event_2_state_table;
-
-             std::optional<string> m_value;
         };
     #pragma endregion
     //
@@ -573,8 +682,28 @@ namespace imalyavskiy
             symbol,
         };
 
+        struct number
+        {
+            number()
+                : m_positive(true)
+                , m_integer(0)
+                , m_fractional_value(0)
+                , m_has_exponent(false)
+                , m_exponent_positive(true)
+                , m_exponent_value(0)
+            {}
+
+            boolean_t   m_positive;
+            integer_t   m_integer;
+            integer_t   m_fractional_value;
+            integer_t   m_fractional_digits;
+            boolean_t   m_has_exponent;
+            boolean_t   m_exponent_positive;
+            integer_t   m_exponent_value;
+        };
+
         class number_parser_t
-            : public parser_impl<e_number_events, e_number_states, e_number_states::initial>
+            : public parser_impl<number, e_number_events, e_number_states, e_number_states::initial>
         {
             using event_t = e_number_events;
             using state_t = e_number_states;
@@ -673,28 +802,6 @@ namespace imalyavskiy
 
         protected:
             const EventToStateTable_t m_event_2_state_table;
-
-            struct number
-            {
-                number()
-                    : m_positive(true)
-                    , m_integer(0)
-                    , m_fractional_value(0)
-                    , m_has_exponent(false)
-                    , m_exponent_positive(true)
-                    , m_exponent_value(0)
-                {}
-
-                boolean_t   m_positive;
-                integer_t   m_integer;
-                integer_t   m_fractional_value;
-                integer_t   m_fractional_digits;
-                boolean_t   m_has_exponent;
-                boolean_t   m_exponent_positive;
-                integer_t   m_exponent_value;
-            };
-
-            std::optional<number> m_value;
         };
     #pragma endregion
     //
@@ -719,12 +826,11 @@ namespace imalyavskiy
         };
 
         class null_parser_t
-            : public parser_impl<e_null_events, e_null_states, e_null_states::initial>
+            : public parser_impl<null_t, e_null_events, e_null_states, e_null_states::initial>
         {
             using event_t = e_null_events;
             using state_t = e_null_states;
             using EventToStateTable_t = StateTable<state_t, event_t>;
-            using my_value_t = null_t;
 
         public:
             null_parser_t()
@@ -777,8 +883,6 @@ namespace imalyavskiy
 
         protected:
             const EventToStateTable_t m_event_2_state_table;
-
-            std::optional<my_value_t> m_value;
         };
     #pragma endregion
     //
@@ -811,12 +915,11 @@ namespace imalyavskiy
         };
 
         class bool_parser_t
-            : public parser_impl<e_bool_events, e_bool_states, e_bool_states::initial>
+            : public parser_impl<boolean_t, e_bool_events, e_bool_states, e_bool_states::initial>
         {
             using event_t = e_bool_events;
             using state_t = e_bool_states;
             using EventToStateTable_t = StateTable<state_t, event_t>;
-            using my_value_t = boolean_t;
         public:
             bool_parser_t()
                 : m_event_2_state_table
@@ -890,8 +993,6 @@ namespace imalyavskiy
             const EventToStateTable_t m_event_2_state_table;
 
             string m_str;
-
-            std::optional<my_value_t> m_value;
         };
     #pragma endregion 
     //
@@ -912,13 +1013,12 @@ namespace imalyavskiy
         };
 
         class value_parser_t
-            : public parser_impl<e_value_events, e_value_states, e_value_states::initial>
+            : public parser_impl<nullptr_t, e_value_events, e_value_states, e_value_states::initial>
         {
             using event_t               = e_value_events;
             using state_t               = e_value_states;
             using EventToStateTable_t   = StateTable<state_t, event_t>;
             using ParserItem_t          = pair_t<boolean_t, parser::ptr>;
-            using my_value_t            = value;
         public:
             value_parser_t()
                 : m_event_2_state_table
@@ -987,12 +1087,12 @@ namespace imalyavskiy
         };
 
         class array_parser_t
-            : public parser_impl<e_array_events, e_array_states, e_array_states::initial>
+            : public parser_impl<arr, e_array_events, e_array_states, e_array_states::initial>
         {
             using event_t = e_array_events;
             using state_t = e_array_states;
             using EventToStateTable_t = StateTable<state_t, event_t>;
-            using my_value_t = array;
+
         public:
             array_parser_t()
                 : m_event_2_state_table
@@ -1054,8 +1154,6 @@ namespace imalyavskiy
             const EventToStateTable_t m_event_2_state_table;
 
             parser::ptr m_value_parser;
-
-            std::optional<array> m_value;
         };
     #pragma endregion
     //
@@ -1090,12 +1188,12 @@ namespace imalyavskiy
         };
 
         class object_parser_t
-            : public parser_impl<e_object_events, e_object_states, e_object_states::initial>
+            : public parser_impl<obj, e_object_events, e_object_states, e_object_states::initial>
         {
             using event_t = e_object_events;
             using state_t = e_object_states;
             using EventToStateTable_t = StateTable<state_t, event_t>;
-            using my_value_t = object;
+
         public:
             // {ctor}
             object_parser_t()
@@ -1171,8 +1269,6 @@ namespace imalyavskiy
 
             parser::ptr m_key_parser;
             parser::ptr m_val_parser;
-
-            std::optional<my_value_t> m_value;
         };
     #pragma endregion 
     //////////////////////////////////////////////////////////////////////////
@@ -1190,7 +1286,7 @@ namespace imalyavskiy
     //////////////////////////////////////////////////////////////////////////
     #pragma region -- json data definition --
     JSON_TEMPLATE_PARAMS
-    JSON_TEMPLATE_CLASS::object::object(std::initializer_list<JSON_TEMPLATE_CLASS::pair_t<typename JSON_TEMPLATE_CLASS::string, typename JSON_TEMPLATE_CLASS::value>> l)
+    JSON_TEMPLATE_CLASS::obj::obj(std::initializer_list<JSON_TEMPLATE_CLASS::pair_t<typename JSON_TEMPLATE_CLASS::string, typename JSON_TEMPLATE_CLASS::value>> l)
     {
         for (auto arg : l)
             insert(arg);
@@ -1198,7 +1294,7 @@ namespace imalyavskiy
 
     JSON_TEMPLATE_PARAMS
     const typename JSON_TEMPLATE_CLASS::string
-    JSON_TEMPLATE_CLASS::object::str(typename JSON_TEMPLATE_CLASS::sstream& str)
+    JSON_TEMPLATE_CLASS::obj::str(typename JSON_TEMPLATE_CLASS::sstream& str)
     {
         // leading curly brace
         str << "{";
@@ -1214,22 +1310,22 @@ namespace imalyavskiy
             switch ((value::vt)it->second.index())
             {
             case value::vt::t_string:
-                str << "\"" << std::get<string>(it->second) << "\"";
+                str << "\"" << it->second.get<string>() << "\"";
                 break;
             case value::vt::t_object:
-                std::get<object>(it->second).str(str);
+                it->second.get<obj>().str(str);
                 break;
             case value::vt::t_array:
-                std::get<array>(it->second).str(str);
+                it->second.get<arr>().str(str);
                 break;
             case value::vt::t_integer:
-                str << std::get<integer_t>(it->second);
+                str << it->second.get<integer_t>();
                 break;
             case value::vt::t_floatingpt:
-                str << std::scientific << std::get<floatingpt_t>(it->second);
+                str << std::scientific << it->second.get<floatingpt_t>();
                 break;
             case value::vt::t_boolean:
-                str << (std::get<boolean_t>(it->second) ? "true" : "false");
+                str << (it->second.get<boolean_t>() ? "true" : "false");
                 break;
             case value::vt::t_null:
                 str << "null";
@@ -1250,7 +1346,7 @@ namespace imalyavskiy
     }
 
     JSON_TEMPLATE_PARAMS
-    JSON_TEMPLATE_CLASS::array::array(std::initializer_list<value> l)
+    JSON_TEMPLATE_CLASS::arr::arr(std::initializer_list<value> l)
     {
         for (auto arg : l)
             push_back(arg);
@@ -1258,7 +1354,7 @@ namespace imalyavskiy
 
     JSON_TEMPLATE_PARAMS
     const typename JSON_TEMPLATE_CLASS::string
-    JSON_TEMPLATE_CLASS::array::str(typename JSON_TEMPLATE_CLASS::sstream& str)
+    JSON_TEMPLATE_CLASS::arr::str(typename JSON_TEMPLATE_CLASS::sstream& str)
     {
         // leading curly brace
         str << "[";
@@ -1271,22 +1367,22 @@ namespace imalyavskiy
             switch ((value::vt)it->index())
             {
             case value::vt::t_string:
-                str << "\"" << std::get<string>(*it) << "\"";
+                str << "\"" << (*it).get<string>() << "\"";
                 break;
             case value::vt::t_object:
-                std::get<object>(*it).str(str);
+                (*it).get<obj>().str(str);
                 break;
             case value::vt::t_array:
-                std::get<array>(*it).str(str);
+                (*it).get<arr>().str(str);
                 break;
             case value::vt::t_integer:
-                str << std::get<integer_t>(*it);
+                str << (*it).get<integer_t>();
                 break;
             case value::vt::t_floatingpt:
-                str << std::scientific << std::get<floatingpt_t>(*it);
+                str << std::scientific << (*it).get<floatingpt_t>();
                 break;
             case value::vt::t_boolean:
-                str << ((std::get<boolean_t>(*it) ? "true" : "false"));
+                str << (((*it).get<boolean_t>() ? "true" : "false"));
                 break;
             case value::vt::t_null:
                 str << "null";
@@ -1327,7 +1423,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::string_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
             return *m_value;
 
         assert(0); // TODO: throw an exception
@@ -1417,7 +1513,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_inside(const symbol_t&c, const int pos)
     {
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         (*m_value) += c;
@@ -1429,7 +1525,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_escape(const symbol_t&c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
         (*m_value) += c;
         return result_t::s_need_more;
     }
@@ -1438,7 +1534,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_unicode(const symbol_t&c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
         (*m_value) += c;
         return result_t::s_need_more;
     }
@@ -1479,7 +1575,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::number_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
         {
             value val;
             const number& num = (*m_value);
@@ -1557,7 +1653,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_minus(const symbol_t& c, const int pos)
     {
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         (*m_value).m_positive = false;
@@ -1569,7 +1665,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_integer(const symbol_t& c, const int pos)
     {
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         const result_t res = append_digit((*m_value).m_integer, c);
@@ -1580,7 +1676,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_fractional(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
         const result_t res = append_digit((*m_value).m_fractional_value, c);
         (*m_value).m_fractional_digits++;
         return result_t::s_ok == res ? result_t::s_need_more : res;
@@ -1590,7 +1686,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_exponent(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
         (*m_value).m_has_exponent = true;
         return result_t::s_need_more;
     }
@@ -1599,7 +1695,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_exp_sign(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
 
         switch (c)
         {
@@ -1617,7 +1713,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::number_parser_t::on_exp_value(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
         const result_t res = append_digit((*m_value).m_exponent_value, c);
         return result_t::s_ok == res ? result_t::s_need_more : res;
     }
@@ -1635,18 +1731,18 @@ namespace imalyavskiy
         case state_t::initial:
         case state_t::leading_minus:
         case state_t::integer:
-            if (!m_value.has_value())
+            if (!m_value)
                 m_value.emplace();
             res = append_digit((*m_value).m_integer, c);
             break;
         case state_t::decimal_dot:
         case state_t::fractional:
-            assert(m_value.has_value());
+            assert(m_value);
             res = append_digit((*m_value).m_fractional_value, c);
             break;
         case state_t::exponent_delim:
         case state_t::exponent_sign:
-            assert(m_value.has_value());
+            assert(m_value);
         case state_t::exponent_val:
             res = append_digit((*m_value).m_exponent_value, c);
             break;
@@ -1722,7 +1818,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::null_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
             return *m_value;
 
         assert(0); // TODO: throw an exception
@@ -1785,7 +1881,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::null_parser_t::on_done(const symbol_t& c, const int pos)
     {
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         (*m_value) = nullptr;
@@ -1822,7 +1918,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::bool_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
             return *m_value;
 
         assert(0); // TODO: throw an exception
@@ -1933,7 +2029,7 @@ namespace imalyavskiy
 
         auto update = [this](const boolean_t val)->result_t
         {
-            if (!m_value.has_value())
+            if (!m_value)
                 m_value.emplace();
 
             (*m_value) = val;
@@ -2126,7 +2222,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::array_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
             return *m_value;
 
         assert(0); // TODO: throw an exception
@@ -2203,7 +2299,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::array_parser_t::on_begin(const symbol_t& c, const int pos)
     {
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         return result_t::s_need_more;
@@ -2227,7 +2323,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::array_parser_t::on_got_val(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
 
         const value val = m_value_parser->get();
 
@@ -2242,7 +2338,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::array_parser_t::on_done(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
 
         return result_t::s_done;
     }
@@ -2305,7 +2401,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::value
     JSON_TEMPLATE_CLASS::object_parser_t::get() const
     {
-        if (m_value.has_value())
+        if (m_value)
             return *m_value;
 
         assert(0); // TODO: throw an exception
@@ -2402,7 +2498,7 @@ namespace imalyavskiy
         if (!m_val_parser)
             m_val_parser.reset(new value_parser_t());
 
-        if (!m_value.has_value())
+        if (!m_value)
             m_value.emplace();
 
         return result_t::s_need_more;
@@ -2458,9 +2554,9 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::object_parser_t::on_got_val(const symbol_t& c, const int pos)
     {
-        assert(m_value.has_value());
+        assert(m_value);
 
-        const string key = std::get<string>(m_key_parser->get());
+        const string key = m_key_parser->get().get<string>();
         const value val = m_val_parser->get();
 
         (*m_value)[key] = val;
