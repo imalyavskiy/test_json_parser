@@ -349,12 +349,22 @@ namespace imalyavskiy
                 return get<arr>();
             }
 
-            operator integer_t() const
+            operator int64_t() const
             {
                 if (index() != vt::t_integer)
                     assert(0);
 
-                return get<integer_t>();
+                return (int64_t)get<integer_t>();
+            }
+
+            operator int32_t() const
+            {
+                return (int32_t)operator int64_t();
+            }
+
+            operator int16_t() const
+            {
+                return (int16_t)operator int64_t();
             }
 
             operator floatingpt_t() const
@@ -389,8 +399,9 @@ namespace imalyavskiy
         class container
             : public BaseType
         {
-            using base_t = BaseType;
         public:
+            using my_base_t = BaseType;
+
             /// {ctor}s
             container() = default;
             container(std::initializer_list<value> l) : BaseType(l) {}
@@ -403,9 +414,35 @@ namespace imalyavskiy
             : public container<map_t<string, value>>
         {
         public:
-            /// {ctor}s
+            // constant iterator type 
+            typedef typename container::my_base_t::const_iterator cit;
+
+            // iterator type
+            typedef typename container::my_base_t::iterator it;
+
+            // default constructor
             obj() = default;
+
+            // initializers list constructor
             obj(std::initializer_list<pair_t<string, value>> l);
+
+            // random access operator 
+            value& operator[](const string& key)
+            {
+                return container::operator[](key);
+            }
+
+            // constant random access operator
+            const value& operator[](const string& key) const
+            {
+                return container::at(key);
+            }
+
+            // certain key presence test
+            boolean_t exists(const string& key) const
+            {
+                return end() != find(key);
+            }
 
             /// serialization
             virtual const string str(sstream& str = sstream()) final;
@@ -416,11 +453,19 @@ namespace imalyavskiy
             : public container<vector_t<value>>
         {
         public:
-            /// {ctor}s
+            // constant iterator type
+            typedef typename container::my_base_t::const_iterator cit;
+
+            // iterator
+            typedef typename container::my_base_t::iterator it;
+
+            // default constructor type
             arr() = default;
+
+            // initializer list constructor
             arr(std::initializer_list<value> l);
 
-            /// serialization
+            // serialization
             virtual const string str(sstream& str = sstream()) final;
         };
     #pragma endregion
