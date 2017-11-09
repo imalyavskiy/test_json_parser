@@ -768,7 +768,7 @@ namespace imalyavskiy
                                                 { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
                 } },
                 { state_t::zero,            {   { event_t::dot,         { state_t::decimal_dot,     std::bind(&number_parser_t::on_dot,         this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                                                { event_t::symbol,      { state_t::done,            std::bind(&number_parser_t::on_done,        this, std::placeholders::_1, std::placeholders::_2) } },
                 } },
                 { state_t::decimal_dot,     {   { event_t::dec_zero,    { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
                                                 { event_t::dec_digit,   { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
