@@ -406,7 +406,7 @@ namespace imalyavskiy
             container() = default;
             container(std::initializer_list<value> l) : BaseType(l) {}
 
-            virtual const string str(sstream& str = stream()) = 0;
+            virtual const string str(sstream& str = stream()) const = 0;
         };
 
         /// Declaration of the object JSON data structure
@@ -444,8 +444,14 @@ namespace imalyavskiy
                 return end() != find(key);
             }
 
+            // convert to string
+            operator string() const
+            {
+                return str();
+            }
+
             /// serialization
-            virtual const string str(sstream& str = sstream()) final;
+            virtual const string str(sstream& str = sstream()) const final;
         };
 
         /// Declaration of the array JSON data structure
@@ -465,8 +471,14 @@ namespace imalyavskiy
             // initializer list constructor
             arr(std::initializer_list<value> l);
 
+            // convert to string
+            operator string() const
+            {
+                return str();
+            }
+
             // serialization
-            virtual const string str(sstream& str = sstream()) final;
+            virtual const string str(sstream& str = sstream()) const final;
         };
     #pragma endregion
     //
@@ -1339,7 +1351,7 @@ namespace imalyavskiy
 
     JSON_TEMPLATE_PARAMS
     const typename JSON_TEMPLATE_CLASS::string
-    JSON_TEMPLATE_CLASS::obj::str(typename JSON_TEMPLATE_CLASS::sstream& str)
+    JSON_TEMPLATE_CLASS::obj::str(typename JSON_TEMPLATE_CLASS::sstream& str) const
     {
         // leading curly brace
         str << "{";
@@ -1399,7 +1411,7 @@ namespace imalyavskiy
 
     JSON_TEMPLATE_PARAMS
     const typename JSON_TEMPLATE_CLASS::string
-    JSON_TEMPLATE_CLASS::arr::str(typename JSON_TEMPLATE_CLASS::sstream& str)
+    JSON_TEMPLATE_CLASS::arr::str(typename JSON_TEMPLATE_CLASS::sstream& str) const
     {
         // leading curly brace
         str << "[";
