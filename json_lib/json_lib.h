@@ -62,6 +62,8 @@
 #include <boost/variant.hpp>
 #endif
 
+#define STD_BIND_TO_THIS(__CLASS__, __METHOD__) std::bind(&__CLASS__::__METHOD__, this, std::placeholders::_1, std::placeholders::_2)
+
 #define JSON_TEMPLATE_PARAMS                                              \
 template <                                                                \
     class SymbolT,                                                        \
@@ -407,6 +409,22 @@ namespace imalyavskiy
             container(std::initializer_list<value> l) : BaseType(l) {}
 
             virtual const string str(sstream& str = stream()) const = 0;
+
+            protected:
+                string serialize_string(const string& s) const
+                {
+                    string r;
+
+                    for (symbol_t c : s)
+                    {
+                        if (c != '\n' && c != '\r')
+                            r.push_back(c);
+                        else
+                            r += c == '\n' ? "\\n" : "\\r";
+                    }
+
+                    return r;
+                }
         };
 
         /// Declaration of the object JSON data structure
@@ -600,8 +618,6 @@ namespace imalyavskiy
             initial,    // wait for " and skipping space charscters - space, hrisontal tab, crlf, lf
             inside,
             escape,
-            cr,
-            lf,
             unicode_1,
             unicode_2,
             unicode_3,
@@ -636,45 +652,39 @@ namespace imalyavskiy
             string_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial,     {   { event_t::quote,       { state_t::inside,      std::bind(&string_parser_t::on_initial, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial,   { { event_t::quote,      { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_initial ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::inside,      {   { event_t::quote,       { state_t::done,        std::bind(&string_parser_t::on_done,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::back_slash,  { state_t::escape,      std::bind(&string_parser_t::on_escape,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::inside,    { { event_t::quote,      { state_t::done,      STD_BIND_TO_THIS( string_parser_t, on_done    ) } },
+                                        { event_t::back_slash, { state_t::escape,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::symbol,     { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_inside  ) } },
                 } },
-                { state_t::escape,      {   { event_t::quote,       { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::back_slash,  { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::slash,       { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_b,     { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_f,     { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_n,     { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_r,     { state_t::cr,          std::bind(&string_parser_t::on_escape,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_t,     { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::alpha_u,     { state_t::unicode_1,   std::bind(&string_parser_t::on_unicode, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::escape,    { { event_t::quote,      { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::back_slash, { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::slash,      { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_b,    { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_f,    { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_n,    { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_r,    { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_t,    { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_escape  ) } },
+                                        { event_t::alpha_u,    { state_t::unicode_1, STD_BIND_TO_THIS( string_parser_t, on_unicode ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::cr,          {   { event_t::back_slash,  { state_t::lf,          std::bind(&string_parser_t::on_escape,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::unicode_1, { { event_t::hex_digit,  { state_t::unicode_2, STD_BIND_TO_THIS( string_parser_t, on_unicode ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::lf,          {   { event_t::alpha_n,     { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::unicode_2, { { event_t::hex_digit,  { state_t::unicode_3, STD_BIND_TO_THIS( string_parser_t, on_unicode ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::unicode_1,   {   { event_t::hex_digit,   { state_t::unicode_2,   std::bind(&string_parser_t::on_unicode, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::unicode_3, { { event_t::hex_digit,  { state_t::unicode_4, STD_BIND_TO_THIS( string_parser_t, on_unicode ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::unicode_2,   {   { event_t::hex_digit,   { state_t::unicode_3,   std::bind(&string_parser_t::on_unicode, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::unicode_4, { { event_t::hex_digit,  { state_t::inside,    STD_BIND_TO_THIS( string_parser_t, on_inside  ) } },
+                                        { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::unicode_3,   {   { event_t::hex_digit,   { state_t::unicode_4,   std::bind(&string_parser_t::on_unicode, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,      { { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
-                { state_t::unicode_4,   {   { event_t::hex_digit,   { state_t::inside,      std::bind(&string_parser_t::on_inside,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                } },
-                { state_t::done,        {   { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                } },
-                { state_t::failure,     {   { event_t::symbol,      { state_t::failure,     std::bind(&string_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure,   { { event_t::symbol,     { state_t::failure,   STD_BIND_TO_THIS( string_parser_t, on_fail    ) } },
                 } },
             } {};
 
@@ -708,6 +718,8 @@ namespace imalyavskiy
 
         protected:
             const EventToStateTable_t m_event_2_state_table;
+
+            string m_cache;
         };
     #pragma endregion
     //
@@ -770,49 +782,49 @@ namespace imalyavskiy
             number_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial,         {   { event_t::minus,       { state_t::leading_minus,   std::bind(&number_parser_t::on_minus,       this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_zero,    { state_t::zero,            std::bind(&number_parser_t::on_zero,        this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::integer,         std::bind(&number_parser_t::on_integer,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial,        { { event_t::minus,     { state_t::leading_minus,  STD_BIND_TO_THIS( number_parser_t, on_minus      ) } },
+                                             { event_t::dec_zero,  { state_t::zero,           STD_BIND_TO_THIS( number_parser_t, on_zero       ) } },
+                                             { event_t::dec_digit, { state_t::integer,        STD_BIND_TO_THIS( number_parser_t, on_integer    ) } },
+                                             { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::leading_minus,   {   { event_t::dec_zero,    { state_t::zero,            std::bind(&number_parser_t::on_zero,        this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::integer,         std::bind(&number_parser_t::on_integer,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::leading_minus,  { { event_t::dec_zero,  { state_t::zero,           STD_BIND_TO_THIS( number_parser_t, on_zero       ) } },
+                                             { event_t::dec_digit, { state_t::integer,        STD_BIND_TO_THIS( number_parser_t, on_integer    ) } },
+                                             { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::zero,            {   { event_t::dot,         { state_t::decimal_dot,     std::bind(&number_parser_t::on_dot,         this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::done,            std::bind(&number_parser_t::on_done,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::zero,           { { event_t::dot,       { state_t::decimal_dot,    STD_BIND_TO_THIS( number_parser_t, on_dot        ) } },
+                                             { event_t::symbol,    { state_t::done,           STD_BIND_TO_THIS( number_parser_t, on_done       ) } },
                 } },
-                { state_t::decimal_dot,     {   { event_t::dec_zero,    { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::decimal_dot,    { { event_t::dec_zero,  { state_t::fractional,     STD_BIND_TO_THIS( number_parser_t, on_fractional ) } },
+                                             { event_t::dec_digit, { state_t::fractional,     STD_BIND_TO_THIS( number_parser_t, on_fractional ) } },
+                                             { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::integer,         {   { event_t::dec_zero,    { state_t::integer,         std::bind(&number_parser_t::on_integer,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::integer,         std::bind(&number_parser_t::on_integer,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dot,         { state_t::decimal_dot,     std::bind(&number_parser_t::on_dot,         this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::done,            std::bind(&number_parser_t::on_done,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::integer,        { { event_t::dec_zero,  { state_t::integer,        STD_BIND_TO_THIS( number_parser_t, on_integer    ) } },
+                                             { event_t::dec_digit, { state_t::integer,        STD_BIND_TO_THIS( number_parser_t, on_integer    ) } },
+                                             { event_t::dot,       { state_t::decimal_dot,    STD_BIND_TO_THIS( number_parser_t, on_dot        ) } },
+                                             { event_t::symbol,    { state_t::done,           STD_BIND_TO_THIS( number_parser_t, on_done       ) } },
                 } },
-                { state_t::fractional,      {   { event_t::dec_zero,    { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::fractional,      std::bind(&number_parser_t::on_fractional,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::exponent,    { state_t::exponent_delim,  std::bind(&number_parser_t::on_exponent,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::done,            std::bind(&number_parser_t::on_done,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::fractional,     { { event_t::dec_zero,  { state_t::fractional,     STD_BIND_TO_THIS( number_parser_t, on_fractional ) } },
+                                             { event_t::dec_digit, { state_t::fractional,     STD_BIND_TO_THIS( number_parser_t, on_fractional ) } },
+                                             { event_t::exponent,  { state_t::exponent_delim, STD_BIND_TO_THIS( number_parser_t, on_exponent   ) } },
+                                             { event_t::symbol,    { state_t::done,           STD_BIND_TO_THIS( number_parser_t, on_done       ) } },
                 } },
-                { state_t::exponent_delim,  {   { event_t::minus,       { state_t::exponent_sign,   std::bind(&number_parser_t::on_exp_sign,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::plus,        { state_t::exponent_sign,   std::bind(&number_parser_t::on_exp_sign,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_zero,    { state_t::exponent_delim,  std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::exponent_delim,  std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::exponent_delim, { { event_t::minus,     { state_t::exponent_sign,  STD_BIND_TO_THIS( number_parser_t, on_exp_sign   ) } },
+                                             { event_t::plus,      { state_t::exponent_sign,  STD_BIND_TO_THIS( number_parser_t, on_exp_sign   ) } },
+                                             { event_t::dec_zero,  { state_t::exponent_delim, STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::dec_digit, { state_t::exponent_delim, STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::exponent_sign,   {   { event_t::dec_zero,    { state_t::exponent_val,    std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::exponent_val,    std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::exponent_sign,  { { event_t::dec_zero,  { state_t::exponent_val,   STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::dec_digit, { state_t::exponent_val,   STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::exponent_val,    {   { event_t::dec_zero,    { state_t::exponent_val,    std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::dec_digit,   { state_t::exponent_val,    std::bind(&number_parser_t::on_exp_value,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                                { event_t::symbol,      { state_t::done,            std::bind(&number_parser_t::on_done,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::exponent_val,   { { event_t::dec_zero,  { state_t::exponent_val,   STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::dec_digit, { state_t::exponent_val,   STD_BIND_TO_THIS( number_parser_t, on_exp_value  ) } },
+                                             { event_t::symbol,    { state_t::done,           STD_BIND_TO_THIS( number_parser_t, on_done       ) } },
                 } },
-                { state_t::done,            {   { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,           { { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
-                { state_t::failure,         {   { event_t::symbol,      { state_t::failure,         std::bind(&number_parser_t::on_fail,        this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure,        { { event_t::symbol,    { state_t::failure,        STD_BIND_TO_THIS( number_parser_t, on_fail       ) } },
                 } },
             } {};
 
@@ -893,21 +905,21 @@ namespace imalyavskiy
             null_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial, {   { event_t::letter_n,    { state_t::got_n,   std::bind(&null_parser_t::on_n,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                        { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial, { { event_t::letter_n, { state_t::got_n,   STD_BIND_TO_THIS(null_parser_t, on_n    ) } },
+                                      { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
-                { state_t::got_n,   {   { event_t::letter_u,    { state_t::got_u,   std::bind(&null_parser_t::on_u,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                        { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_n,   { { event_t::letter_u, { state_t::got_u,   STD_BIND_TO_THIS(null_parser_t, on_u    ) } },
+                                      { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
-                { state_t::got_u,   {   { event_t::letter_l,    { state_t::got_l,   std::bind(&null_parser_t::on_l,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                        { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_u,   { { event_t::letter_l, { state_t::got_l,   STD_BIND_TO_THIS(null_parser_t, on_l    ) } },
+                                      { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
-                { state_t::got_l,   {   { event_t::letter_l,    { state_t::done,    std::bind(&null_parser_t::on_done,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                        { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_l,   { { event_t::letter_l, { state_t::done,    STD_BIND_TO_THIS(null_parser_t, on_done ) } },
+                                      { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
-                { state_t::done,    {   { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,    { { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
-                { state_t::failure, {   { event_t::other,       { state_t::failure, std::bind(&null_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure, { { event_t::other,    { state_t::failure, STD_BIND_TO_THIS(null_parser_t, on_fail ) } },
                 } },
             }
             {};
@@ -981,34 +993,34 @@ namespace imalyavskiy
             bool_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial,     {   { event_t::letter_t,    { state_t::got_t,   std::bind(&bool_parser_t::on_t,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::letter_f,    { state_t::got_f,   std::bind(&bool_parser_t::on_f,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial, { { event_t::letter_t, { state_t::got_t,   STD_BIND_TO_THIS( bool_parser_t, on_t    ) } },
+                                      { event_t::letter_f, { state_t::got_f,   STD_BIND_TO_THIS( bool_parser_t, on_f    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_t,       {   { event_t::letter_r,    { state_t::got_r,   std::bind(&bool_parser_t::on_r,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_t,   { { event_t::letter_r, { state_t::got_r,   STD_BIND_TO_THIS( bool_parser_t, on_r    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_r,       {   { event_t::letter_u,    { state_t::got_u,   std::bind(&bool_parser_t::on_u,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_r,   { { event_t::letter_u, { state_t::got_u,   STD_BIND_TO_THIS( bool_parser_t, on_u    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_u,       {   { event_t::letter_e,    { state_t::done,    std::bind(&bool_parser_t::on_done,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_u,   { { event_t::letter_e, { state_t::done,    STD_BIND_TO_THIS( bool_parser_t, on_done ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_f,       {   { event_t::letter_a,    { state_t::got_a,   std::bind(&bool_parser_t::on_a,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_f,   { { event_t::letter_a, { state_t::got_a,   STD_BIND_TO_THIS( bool_parser_t, on_a    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_a,       {   { event_t::letter_l,    { state_t::got_l,   std::bind(&bool_parser_t::on_l,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_a,   { { event_t::letter_l, { state_t::got_l,   STD_BIND_TO_THIS( bool_parser_t, on_l    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_l,       {   { event_t::letter_s,    { state_t::got_s,   std::bind(&bool_parser_t::on_s,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_l,   { { event_t::letter_s, { state_t::got_s,   STD_BIND_TO_THIS( bool_parser_t, on_s    ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::got_s,       {   { event_t::letter_e,    { state_t::done,    std::bind(&bool_parser_t::on_done,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::got_s,   { { event_t::letter_e, { state_t::done,    STD_BIND_TO_THIS( bool_parser_t, on_done ) } },
+                                      { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::done,        {   { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,    { { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
-                { state_t::failure,     {   { event_t::symbol,      { state_t::failure, std::bind(&bool_parser_t::on_fail,  this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure, { { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( bool_parser_t, on_fail ) } },
                 } },
             } {};
 
@@ -1080,14 +1092,14 @@ namespace imalyavskiy
             value_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial, {   { event_t::symbol,  { state_t::read,    std::bind(&value_parser_t::on_data, this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial, { { event_t::symbol,   { state_t::read,    STD_BIND_TO_THIS( value_parser_t, on_data ) } },
                 } },
-                { state_t::read,    {   { event_t::symbol,  { state_t::read,    std::bind(&value_parser_t::on_data, this, std::placeholders::_1, std::placeholders::_2) } },
-                                        { event_t::val_done,{ state_t::done,    std::bind(&value_parser_t::on_done, this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::read,    { { event_t::symbol,   { state_t::read,    STD_BIND_TO_THIS( value_parser_t, on_data ) } },
+                                      { event_t::val_done, { state_t::done,    STD_BIND_TO_THIS( value_parser_t, on_done ) } },
                 } },
-                { state_t::done,    {   { event_t::symbol,  { state_t::failure, std::bind(&value_parser_t::on_fail, this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,    { { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( value_parser_t, on_fail ) } },
                 } },
-                { state_t::failure, {   { event_t::symbol,  { state_t::failure, std::bind(&value_parser_t::on_fail, this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure, { { event_t::symbol,   { state_t::failure, STD_BIND_TO_THIS( value_parser_t, on_fail ) } },
                 } },
             } {};
 
@@ -1154,26 +1166,26 @@ namespace imalyavskiy
             array_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial,     {   { event_t::arr_begin,   { state_t::val_before,  std::bind(&array_parser_t::on_begin,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_before,  std::bind(&array_parser_t::on_more,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&array_parser_t::on_fail,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial,    { { event_t::arr_begin, { state_t::val_before,  STD_BIND_TO_THIS( array_parser_t, on_begin   ) } },
+                                         { event_t::skip,      { state_t::val_before,  STD_BIND_TO_THIS( array_parser_t, on_more    ) } },
+                                         { event_t::symbol,    { state_t::failure,     STD_BIND_TO_THIS( array_parser_t, on_fail    ) } },
                 } },
-                { state_t::val_before,  {   { event_t::symbol,      { state_t::val_inside,  std::bind(&array_parser_t::on_val,      this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_before,  std::bind(&array_parser_t::on_more,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::arr_end,     { state_t::done,        std::bind(&array_parser_t::on_done,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_before, { { event_t::symbol,    { state_t::val_inside,  STD_BIND_TO_THIS( array_parser_t, on_val     ) } },
+                                         { event_t::skip,      { state_t::val_before,  STD_BIND_TO_THIS( array_parser_t, on_more    ) } },
+                                         { event_t::arr_end,   { state_t::done,        STD_BIND_TO_THIS( array_parser_t, on_done    ) } },
                 } },
-                { state_t::val_after,   {   { event_t::arr_end,     { state_t::done,        std::bind(&array_parser_t::on_done,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::comma,       { state_t::val_before,  std::bind(&array_parser_t::on_new,      this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_before,  std::bind(&array_parser_t::on_more,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&array_parser_t::on_fail,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_after,  { { event_t::arr_end,   { state_t::done,        STD_BIND_TO_THIS( array_parser_t, on_done    ) } },
+                                         { event_t::comma,     { state_t::val_before,  STD_BIND_TO_THIS( array_parser_t, on_new     ) } },
+                                         { event_t::skip,      { state_t::val_before,  STD_BIND_TO_THIS( array_parser_t, on_more    ) } },
+                                         { event_t::symbol,    { state_t::failure,     STD_BIND_TO_THIS( array_parser_t, on_fail    ) } },
                 } },
-                { state_t::val_inside,  {   { event_t::symbol,      { state_t::val_inside,  std::bind(&array_parser_t::on_val,      this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::val_done,    { state_t::val_after,   std::bind(&array_parser_t::on_got_val,  this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::val_error,   { state_t::failure,     std::bind(&array_parser_t::on_fail,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_inside, { { event_t::symbol,    { state_t::val_inside,  STD_BIND_TO_THIS( array_parser_t, on_val     ) } },
+                                         { event_t::val_done,  { state_t::val_after,   STD_BIND_TO_THIS( array_parser_t, on_got_val ) } },
+                                         { event_t::val_error, { state_t::failure,     STD_BIND_TO_THIS( array_parser_t, on_fail    ) } },
                 } },
-                { state_t::done,        {   { event_t::symbol,      { state_t::failure,     std::bind(&array_parser_t::on_fail,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,       { { event_t::symbol,    { state_t::failure,     STD_BIND_TO_THIS( array_parser_t, on_fail    ) } },
                 } },
-                { state_t::failure,     {   { event_t::symbol,      { state_t::failure,     std::bind(&array_parser_t::on_fail,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure,    { { event_t::symbol,    { state_t::failure,     STD_BIND_TO_THIS( array_parser_t, on_fail    ) } },
                 } },
             } {};
 
@@ -1256,37 +1268,37 @@ namespace imalyavskiy
             object_parser_t()
                 : m_event_2_state_table
             {
-                { state_t::initial,     {   { event_t::obj_begin,   { state_t::key_before,  std::bind(&object_parser_t::on_begin,   this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_before,  std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::initial,    { { event_t::obj_begin, { state_t::key_before, STD_BIND_TO_THIS( object_parser_t, on_begin   ) } },
+                                         { event_t::skip,      { state_t::val_before, STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
+                                         { event_t::symbol,    { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
                 } },
-                { state_t::key_before,  {   { event_t::obj_end,     { state_t::done,        std::bind(&object_parser_t::on_done,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::key_error,   { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::key_inside,  std::bind(&object_parser_t::on_key,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::key_before,  std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::key_before, { { event_t::obj_end,   { state_t::done,       STD_BIND_TO_THIS( object_parser_t, on_done    ) } },
+                                         { event_t::key_error, { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
+                                         { event_t::symbol,    { state_t::key_inside, STD_BIND_TO_THIS( object_parser_t, on_key     ) } },
+                                         { event_t::skip,      { state_t::key_before, STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
                 } },
-                { state_t::key_inside,  {   { event_t::key_done,    { state_t::key_after,   std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::key_error,   { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::key_inside,  std::bind(&object_parser_t::on_key,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::key_inside, { { event_t::key_done,  { state_t::key_after,  STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
+                                         { event_t::key_error, { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
+                                         { event_t::symbol,    { state_t::key_inside, STD_BIND_TO_THIS( object_parser_t, on_key     ) } },
                 } },
-                { state_t::key_after,   {   { event_t::colon,       { state_t::val_before,  std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::key_after,   std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::key_after,  { { event_t::colon,     { state_t::val_before, STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
+                                         { event_t::skip,      { state_t::key_after,  STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
                 } },
-                { state_t::val_before,  {   { event_t::symbol,      { state_t::val_inside,  std::bind(&object_parser_t::on_val,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::val_error,   { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_before,  std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_before, { { event_t::symbol,    { state_t::val_inside, STD_BIND_TO_THIS( object_parser_t, on_val     ) } },
+                                         { event_t::val_error, { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
+                                         { event_t::skip,      { state_t::val_before, STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
                 } },
-                { state_t::val_inside,  {   { event_t::val_done,    { state_t::val_after,   std::bind(&object_parser_t::on_got_val, this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::val_error,   { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::symbol,      { state_t::val_inside,  std::bind(&object_parser_t::on_val,     this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_inside, { { event_t::val_done,  { state_t::val_after,  STD_BIND_TO_THIS( object_parser_t, on_got_val ) } },
+                                         { event_t::val_error, { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
+                                         { event_t::symbol,    { state_t::val_inside, STD_BIND_TO_THIS( object_parser_t, on_val     ) } },
                 } },
-                { state_t::val_after,   {   { event_t::comma,       { state_t::key_before,  std::bind(&object_parser_t::on_new,     this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::obj_end,     { state_t::done,        std::bind(&object_parser_t::on_done,    this, std::placeholders::_1, std::placeholders::_2) } },
-                                            { event_t::skip,        { state_t::val_after,   std::bind(&object_parser_t::on_more,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::val_after,  { { event_t::comma,     { state_t::key_before, STD_BIND_TO_THIS( object_parser_t, on_new     ) } },
+                                         { event_t::obj_end,   { state_t::done,       STD_BIND_TO_THIS( object_parser_t, on_done    ) } },
+                                         { event_t::skip,      { state_t::val_after,  STD_BIND_TO_THIS( object_parser_t, on_more    ) } },
                 } },
-                { state_t::done,        {   { event_t::symbol,      { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::done,       { { event_t::symbol,    { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
                 } },
-                { state_t::failure,     {   { event_t::symbol,      { state_t::failure,     std::bind(&object_parser_t::on_fail,    this, std::placeholders::_1, std::placeholders::_2) } },
+                { state_t::failure,    { { event_t::symbol,    { state_t::failure,    STD_BIND_TO_THIS( object_parser_t, on_fail    ) } },
                 } },
             } {};
 
@@ -1367,7 +1379,7 @@ namespace imalyavskiy
             switch ((value::vt)it->second.index())
             {
             case value::vt::t_string:
-                str << "\"" << it->second.get<string>() << "\"";
+                str << "\"" << container::serialize_string(it->second.get<string>()) << "\"";
                 break;
             case value::vt::t_object:
                 it->second.get<obj>().str(str);
@@ -1424,7 +1436,7 @@ namespace imalyavskiy
             switch ((value::vt)it->index())
             {
             case value::vt::t_string:
-                str << "\"" << (*it).get<string>() << "\"";
+                str << "\"" << container::serialize_string((*it).get<string>())<< "\"";
                 break;
             case value::vt::t_object:
                 (*it).get<obj>().str(str);
@@ -1525,14 +1537,6 @@ namespace imalyavskiy
             case 0x75:  smb = event_t::alpha_u;     break;
             }
             break;
-        case state_t::cr:
-            if (0x5C == c)
-                return event_t::back_slash;
-            break;
-        case state_t::lf:
-            if (0x6E == c)
-                return event_t::alpha_n;
-            break;
         case state_t::unicode_1:
         case state_t::unicode_2:
         case state_t::unicode_3:
@@ -1582,18 +1586,69 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_escape(const symbol_t&c, const int pos)
     {
-        assert(m_value);
-        (*m_value) += c;
-        return result_t::s_need_more;
+        result_t result = result_t::s_need_more;
+        const state_t s = state::get();
+
+        if (state_t::inside == s)
+        {
+            m_cache.clear();
+            m_cache.push_back(c);
+        }
+        else if (state_t::escape == state::get() && m_cache.size() == 1 && m_cache[0] == '\\')
+        {
+            assert(m_value);
+    
+            m_cache.push_back(c);
+
+            if (m_cache == "\\b")        // got backspace sequence
+                (*m_value) += '\b', m_cache.clear();
+            else if (m_cache == "\\f")   // got formfeed sequence
+                (*m_value) += '\f', m_cache.clear();
+            else if (m_cache == "\\n")   // got newline sequence
+                (*m_value) += '\n', m_cache.clear();
+            else if (m_cache == "\\r")   // got carriage return sequence
+                (*m_value) += '\r', m_cache.clear();
+            else if (m_cache == "\\t")   // got hotisontal tab sequence
+                (*m_value) += '\t', m_cache.clear();
+            else if (m_cache == "\\\"")  // got double quote as symbol sequence
+                (*m_value) += m_cache, m_cache.clear();
+            else if (m_cache == "\\\\")  // got backslash as symbol sequence
+                (*m_value) += m_cache, m_cache.clear();
+            else if (m_cache == "\\/")   // got slash as symbol sequence
+                (*m_value) += m_cache, m_cache.clear();
+            else if (m_cache != "\\u")   // got any other symbol except \u
+                result = result_t::e_unexpected;
+        }
+
+        return result;
     }
 
     JSON_TEMPLATE_PARAMS
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_unicode(const symbol_t&c, const int pos)
     {
+        result_t result = result_t::s_need_more;
+
         assert(m_value);
+
+        switch (state::get())
+        {
+        case state_t::unicode_1:
+        case state_t::unicode_2:
+        case state_t::unicode_3:
+            m_cache.push_back(c);
+            break;
+        case state_t::unicode_4:
+            m_cache.push_back(c);
+            assert(0); // once you got here - implement correct inserting of the 4byte symbol into the string
+            (*m_value) += m_cache;
+            m_cache.clear();
+            break;
+        default:
+            result = result_t::e_unexpected;
+        }
         (*m_value) += c;
-        return result_t::s_need_more;
+        return result;
     }
 
     JSON_TEMPLATE_PARAMS
@@ -2624,5 +2679,6 @@ namespace imalyavskiy
 }
 #undef JSON_TEMPLATE_PARAMS
 #undef JSON_TEMPLATE_CLASS
+#undef STD_BIND_TO_THIS
 
 #endif // __JSON_LIB_H__

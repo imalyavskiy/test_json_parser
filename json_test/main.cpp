@@ -152,8 +152,8 @@ const std::string& json_data_structure_1(std::string& str = std::string())
 
 int main(int argc, char** argv)
 {
-    bool result = json_data_structure_1() == json_data_structure_2();
-    assert(true == result);
+//     bool result = json_data_structure_1() == json_data_structure_2();
+//     assert(true == result);
 
 	parser_main(argc, argv);
 
