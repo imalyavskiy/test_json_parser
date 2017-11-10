@@ -170,12 +170,12 @@ namespace imalyavskiy
         /// possible results
         enum class result_t
         {
-            s_need_more     =  3, // need more data
-            s_done_rpt      =  2, // symbol succesfully terminates parsing but makes no sense to current parser, put it once again to above parser
-            s_done          =  1, // symbol succesfully terminates parsing and makes sense to current parser
-            s_ok            =  0, // general success
-            e_fatal         = -1, // general failure
-            e_unexpected    = -2, // unexpected parameter value
+            s_need_more     =  3, // Need more data.
+            s_done_rpt      =  2, // Symbol succesfully terminates parsing but makes no sense to current parser. Reparse symbol by above parser.
+            s_done          =  1, // Symbol succesfully terminates parsing and makes sense to current parser.
+            s_ok            =  0, // General success.
+            e_fatal         = -1, // General failure.
+            e_unexpected    = -2, // Unexpected parameter or value.
         };
 
         inline static boolean_t failed(const result_t& r) { return r < result_t::s_ok; }
@@ -417,10 +417,34 @@ namespace imalyavskiy
 
                     for (symbol_t c : s)
                     {
-                        if (c != '\n' && c != '\r')
-                            r.push_back(c);
-                        else
-                            r += c == '\n' ? "\\n" : "\\r";
+                        switch (c)
+                        {
+                        case '\b':          // backspace
+                            r += "\\b";
+                            break;
+                        case '\f':          // form feed
+                            r += "\\f";
+                            break;
+                        case '\n':          // new line
+                            r += "\\n";
+                            break;
+                        case '\r':          // carriage return
+                            r += "\\r";
+                            break;
+                        case '\t':          // horizontal tab
+                            r += "\\t";
+                            break;
+                        case '\\':          // back slash
+                            r += "\\\\";
+                            break;
+                        case '/':           // forward slash
+                            r += "\\/";
+                            break;
+                        // TODO: needed to properly serialize unicode(2-byte) symbols
+                        default:
+                            r.push_back(c); // all other
+                            break;
+                        }
                     }
 
                     return r;
