@@ -1679,6 +1679,9 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::string_parser_t::on_done(const symbol_t&c, const int pos)
     {
+        if (!m_value)
+            m_value.emplace();
+
         return result_t::s_done;
     }
 
@@ -2163,7 +2166,7 @@ namespace imalyavskiy
     {
         m_str += c;
 
-        auto update = [this](const boolean_t val)->result_t
+        auto update = [this](const boolean_t val)->result_t 
         {
             if (!m_value)
                 m_value.emplace();
