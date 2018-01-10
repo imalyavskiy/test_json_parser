@@ -1623,7 +1623,8 @@ namespace imalyavskiy
             assert(m_value);
     
             m_cache.push_back(c);
-
+#pragma warning( push )
+#pragma warning( disable : 4129 )
             if (m_cache == "\\b")        // got backspace sequence
                 (*m_value) += '\b', m_cache.clear();
             else if (m_cache == "\\f")   // got formfeed sequence
@@ -1639,11 +1640,11 @@ namespace imalyavskiy
             else if (m_cache == "\\\\")  // got backslash as symbol sequence
                 (*m_value) += m_cache, m_cache.clear();
             else if (m_cache == "\\/")   // got slash as symbol sequence
-                (*m_value) += m_cache, m_cache.clear();
+                (*m_value) += "\/", m_cache.clear();
             else if (m_cache != "\\u")   // got any other symbol except \u
                 result = result_t::e_unexpected;
         }
-
+#pragma warning( pop )
         return result;
     }
 
