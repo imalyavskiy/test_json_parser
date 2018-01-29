@@ -240,16 +240,28 @@ namespace imalyavskiy
                 t_null       = 6,
             };
 
-            /// {ctor}s
-            value() { }
+			/// base {ctor}
+			value() { }
+
+            /// copy {ctor}s
             value(const string& other)      : base_t(other)         {}
             value(const obj& other)         : base_t(other)         {}
             value(const arr&  other)        : base_t(other)         {}
-            value(const integer_t   other)  : base_t(other)         {}
-            value(const floatingpt_t other) : base_t(other)         {}
-            value(const boolean_t other)    : base_t(other)         {}
-            value(const symbol_t* other)    : base_t(string(other)) {}
-            value(const null_t other)       : base_t(other)         {}
+            value(const integer_t&   other)  : base_t(other)         {}
+            value(const floatingpt_t& other) : base_t(other)         {}
+            value(const boolean_t& other)    : base_t(other)         {}
+            value(const symbol_t*& other)    : base_t(string(other)) {}
+            value(const null_t& other)       : base_t(other)         {}
+
+			/// move {ctor}s
+			value(const string&& other) : base_t(other) {}
+			value(const obj&& other) : base_t(other) {}
+			value(const arr&&  other) : base_t(other) {}
+			value(const integer_t&&   other) : base_t(other) {}
+			value(const floatingpt_t&& other) : base_t(other) {}
+			value(const boolean_t&& other) : base_t(other) {}
+			value(const symbol_t*&& other) : base_t(string(other)) {}
+			value(const null_t&& other) : base_t(other) {}
 
 #if _HAS_CXX17
             vt index() const {
