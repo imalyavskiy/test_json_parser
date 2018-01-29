@@ -269,7 +269,7 @@ namespace imalyavskiy
             }
 #endif
 
-            /// Assign operators
+            /// Copy-assign operators
             const value& operator=(const string& other)
             {
                 base_t::operator=(other);
@@ -288,35 +288,84 @@ namespace imalyavskiy
                 return (*this);
             }
 
-            const value& operator=(const integer_t other)
+            const value& operator=(const integer_t& other)
             {
                 base_t::operator=(other);
                 return (*this);
             }
 
-            const value& operator=(const floatingpt_t other)
+            const value& operator=(const floatingpt_t& other)
             {
                 base_t::operator=(other);
                 return (*this);
             }
 
-            const value& operator=(const boolean_t other)
+            const value& operator=(const boolean_t& other)
             {
                 base_t::operator=(other);
                 return (*this);
             }
 
-            const value& operator=(const symbol_t* other)
+            const value& operator=(const symbol_t*& other)
             {
                 base_t::operator=(string(other));
                 return (*this);
             }
 
-            const value& operator=(const null_t other)
+            const value& operator=(const null_t& other)
             {
                 base_t::operator=(other);
                 return (*this);
             }
+
+			/// Move-assign operators
+			const value& operator=(const string&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const obj&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const arr&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const integer_t&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const floatingpt_t&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const boolean_t&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
+
+			const value& operator=(const symbol_t*&& other)
+			{
+				base_t::operator=(string(other));
+				return (*this);
+			}
+
+			const value& operator=(const null_t&& other)
+			{
+				base_t::operator=(other);
+				return (*this);
+			}
 
             inline bool is_string()     const { return vt::t_string     == index(); }
             inline bool is_object()     const { return vt::t_object     == index(); }
