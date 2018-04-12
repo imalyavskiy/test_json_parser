@@ -186,7 +186,7 @@ namespace imalyavskiy
             symbol_t c = 0;
             result_t result = result_t::s_ok;
 
-            parser::ptr p = create();
+            typename parser::ptr p = create();
             if (!p)
                 return result_t::e_fatal;
 
@@ -457,10 +457,10 @@ namespace imalyavskiy
         {
         public:
             // constant iterator type 
-            typedef typename container::my_base_t::const_iterator cit;
+            typedef typename container<map_t<string, value>>::my_base_t::const_iterator cit;
 
             // iterator type
-            typedef typename container::my_base_t::iterator it;
+            typedef typename container<map_t<string, value>>::my_base_t::iterator it;
 
             // default constructor
             obj() = default;
@@ -502,10 +502,10 @@ namespace imalyavskiy
         {
         public:
             // constant iterator type
-            typedef typename container::my_base_t::const_iterator cit;
+            typedef typename container<vector_t<value>>::my_base_t::const_iterator cit;
 
             // iterator
-            typedef typename container::my_base_t::iterator it;
+            typedef typename container<vector_t<value>>::my_base_t::iterator it;
 
             // default constructor type
             arr() = default;
