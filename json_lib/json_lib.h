@@ -1246,7 +1246,7 @@ namespace imalyavskiy
         protected:
             const EventToStateTable_t m_event_2_state_table;
 
-            parser::ptr m_value_parser;
+            parser::ptr m_val_parser;
         };
     #pragma endregion
     //
@@ -2324,10 +2324,10 @@ namespace imalyavskiy
     {
         state::set(state_t::initial);
 
-        if (!m_value_parser)
-            m_value_parser.reset(new value_parser_t());
+        if (!m_val_parser)
+            m_val_parser.reset(new value_parser_t());
 
-        m_value_parser->reset();
+        m_val_parser->reset();
 
         m_value.reset();
     }
@@ -2439,6 +2439,9 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::array_parser_t::on_begin(const symbol_t& c, const int pos)
     {
+        if (!m_val_parser)
+            m_val_parser.reset(new value_parser_t());
+
         if (!m_value)
             m_value.emplace();
 
@@ -2456,7 +2459,7 @@ namespace imalyavskiy
     typename JSON_TEMPLATE_CLASS::result_t
     JSON_TEMPLATE_CLASS::array_parser_t::on_val(const symbol_t& c, const int pos)
     {
-        return m_value_parser->putchar(c, pos);
+        return m_val_parser->putchar(c, pos);
     }
 
     JSON_TEMPLATE_PARAMS
@@ -2465,11 +2468,11 @@ namespace imalyavskiy
     {
         assert(m_value);
 
-        const value val = m_value_parser->get();
+        const value val = m_val_parser->get();
 
         (*m_value).push_back(val);
 
-        m_value_parser->reset();
+        m_val_parser->reset();
 
         return result_t::s_need_more;
     }
