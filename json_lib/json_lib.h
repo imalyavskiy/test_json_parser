@@ -171,8 +171,8 @@ namespace imalyavskiy
         enum class result_t
         {
             s_need_more     =  3, // Need more data.
-            s_done_rpt      =  2, // Symbol succesfully terminates parsing but makes no sense to current parser. Reparse symbol by above parser.
-            s_done          =  1, // Symbol succesfully terminates parsing and makes sense to current parser.
+            s_done_rpt      =  2, // Symbol successfully terminates parsing but makes no sense to current parser. Reparse symbol by above parser.
+            s_done          =  1, // Symbol successfully terminates parsing and makes sense to current parser.
             s_ok            =  0, // General success.
             e_fatal         = -1, // General failure.
             e_unexpected    = -2, // Unexpected parameter or value.

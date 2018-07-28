@@ -4,23 +4,67 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 15.0.26730.15
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "json_test", "json_test\json_test.vcxproj", "{F0345F2B-A1A1-4480-B795-4882F20670E6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10} = {F46D148B-58D3-3556-B7A9-E40E7331BA10}
+		{22443C9D-90CE-362A-8082-CF26148CA9C3} = {22443C9D-90CE-362A-8082-CF26148CA9C3}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gmock", "submodules\googletest\googlemock\gmock.vcxproj", "{F46D148B-58D3-3556-B7A9-E40E7331BA10}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gtest", "submodules\googletest\googlemock\gtest\gtest.vcxproj", "{22443C9D-90CE-362A-8082-CF26148CA9C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		MinSizeRel|x64 = MinSizeRel|x64
+		MinSizeRel|x86 = MinSizeRel|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
+		RelWithDebInfo|x64 = RelWithDebInfo|x64
+		RelWithDebInfo|x86 = RelWithDebInfo|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Debug|x64.ActiveCfg = Debug|x64
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Debug|x64.Build.0 = Debug|x64
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Debug|x86.ActiveCfg = Debug|Win32
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Debug|x86.Build.0 = Debug|Win32
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.MinSizeRel|x64.ActiveCfg = Release|x64
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.MinSizeRel|x64.Build.0 = Release|x64
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.MinSizeRel|x86.ActiveCfg = Release|Win32
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.MinSizeRel|x86.Build.0 = Release|Win32
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Release|x64.ActiveCfg = Release|x64
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Release|x64.Build.0 = Release|x64
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Release|x86.ActiveCfg = Release|Win32
 		{F0345F2B-A1A1-4480-B795-4882F20670E6}.Release|x86.Build.0 = Release|Win32
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.RelWithDebInfo|x64.ActiveCfg = Release|x64
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.RelWithDebInfo|x64.Build.0 = Release|x64
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.RelWithDebInfo|x86.ActiveCfg = Release|Win32
+		{F0345F2B-A1A1-4480-B795-4882F20670E6}.RelWithDebInfo|x86.Build.0 = Release|Win32
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Debug|x64.ActiveCfg = Debug|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Debug|x64.Build.0 = Debug|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Debug|x86.ActiveCfg = Debug|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.MinSizeRel|x64.ActiveCfg = MinSizeRel|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.MinSizeRel|x64.Build.0 = MinSizeRel|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.MinSizeRel|x86.ActiveCfg = MinSizeRel|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Release|x64.ActiveCfg = Release|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Release|x64.Build.0 = Release|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.Release|x86.ActiveCfg = Release|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
+		{F46D148B-58D3-3556-B7A9-E40E7331BA10}.RelWithDebInfo|x86.ActiveCfg = RelWithDebInfo|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Debug|x64.ActiveCfg = Debug|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Debug|x64.Build.0 = Debug|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Debug|x86.ActiveCfg = Debug|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.MinSizeRel|x64.ActiveCfg = MinSizeRel|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.MinSizeRel|x64.Build.0 = MinSizeRel|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.MinSizeRel|x86.ActiveCfg = MinSizeRel|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Release|x64.ActiveCfg = Release|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Release|x64.Build.0 = Release|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.Release|x86.ActiveCfg = Release|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
+		{22443C9D-90CE-362A-8082-CF26148CA9C3}.RelWithDebInfo|x86.ActiveCfg = RelWithDebInfo|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
