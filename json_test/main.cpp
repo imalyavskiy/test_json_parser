@@ -348,10 +348,29 @@ TEST(CompleteObjectTest, test0200_BigComplexObjectFormatted)
     ASSERT_EQ(json::result_t::s_done, json::parse(data, jsobj));
 }
 
-TEST(ObjectStructureTest, test0000_TwoWaysObjectCreationResultCompare)
+TEST(ObjectStructureCase, test0000_TwoWaysObjectCreationResultCompare)
 {
     ASSERT_EQ(json_data_structure_1(), json_data_structure_2());
 }
+
+TEST(ObjectStructureCase, test0001_ElementAccess)
+{
+    json::obj test_obj{
+        {"first", json::obj{
+            {"second", json::obj{
+                {"third", json::arr{
+                    "fourth", "fifth"
+                } }
+            } }
+        } }
+    };
+
+    json::obj _1 = test_obj["first"];
+    json::obj _2 = test_obj["first"]["second"];
+    json::arr _3 = test_obj["first"]["second"]["third"];
+    json::string _4 = (json::string)test_obj["first"]["second"]["third"][0];
+}
+
 
 int main(int argc, char** argv)
 {

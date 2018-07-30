@@ -240,6 +240,8 @@ namespace imalyavskiy
                 t_null       = 6,
             };
 
+            static inline bool check_vt_val(const vt& v) { return (vt::t_string <= v || v <= vt::t_null); }
+
             /// {ctor}s
             value() { }
             value(const string& other)      : base_t(other)         {}
@@ -327,70 +329,94 @@ namespace imalyavskiy
             inline bool is_boolean()    const { return vt::t_boolean    == index(); }
             inline bool is_null()       const { return vt::t_null       == index(); }
 
-            operator string() const
-            {
-                if (index() != vt::t_string)
-                    assert(0);
-
-                return get<string>();
-            }
-
             operator obj() const
             {
+                assert(check_vt_val(index()));
+
                 if (index() != vt::t_object)
-                    assert(0);
+                    throw std::logic_error("Not an object.");
 
                 return get<obj>();
             }
 
             operator arr() const
             {
+                assert(check_vt_val(index()));
+
                 if (index() != vt::t_array)
-                    assert(0);
+                    throw std::logic_error("Not an array.");
 
                 return get<arr>();
             }
 
-            operator int64_t() const
+            explicit operator string() const
             {
+                assert(check_vt_val(index()));
+
+                if (index() != vt::t_string)
+                    throw std::logic_error("Not a string.");
+
+                return get<string>();
+            }
+
+            explicit operator int64_t() const
+            {
+                assert(check_vt_val(index()));
+
                 if (index() != vt::t_integer)
-                    assert(0);
+                    throw std::logic_error("Not an integer number.");
 
                 return (int64_t)get<integer_t>();
             }
 
-            operator int32_t() const
+            explicit operator floatingpt_t() const
             {
-                return (int32_t)operator int64_t();
-            }
+                assert(check_vt_val(index()));
 
-            operator int16_t() const
-            {
-                return (int16_t)operator int64_t();
-            }
-
-            operator floatingpt_t() const
-            {
                 if (index() != vt::t_floatingpt)
-                    assert(0);
+                    throw std::logic_error("Not a floating pointer number.");
 
                 return get<floatingpt_t>();
             }
 
-            operator boolean_t() const
+            explicit operator boolean_t() const
             {
+                assert(check_vt_val(index()));
+
                 if (index() != vt::t_boolean)
-                    assert(0);
+                    throw std::logic_error("Not a boolean.");
 
                 return get<boolean_t>();
             }
 
-            operator null_t() const
+            explicit operator null_t() const
             {
+                assert(check_vt_val(index()));
+
                 if (index() != vt::t_null)
-                    assert(0);
+                    throw std::logic_error("Not a null.");
 
                 return get<null_t>();
+            }
+
+            value operator[](const string& key) 
+            {
+                return operator obj()[key];
+            }
+
+            value operator[](const size_t& idx) 
+            {
+                return operator arr()[idx];
+            }
+
+            explicit operator int32_t() const
+            {
+                return reinterpret_cast<int32_t>(operator int64_t());
+            }
+
+            explicit operator int16_t() const
+            {
+                return reinterpret_cast<int16_t>(operator int64_t());
             }
         };
 
