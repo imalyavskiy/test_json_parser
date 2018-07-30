@@ -411,12 +411,12 @@ namespace imalyavskiy
 
             explicit operator int32_t() const
             {
-                return reinterpret_cast<int32_t>(operator int64_t());
+                return (int32_t)(operator int64_t());
             }
 
             explicit operator int16_t() const
             {
-                return reinterpret_cast<int16_t>(operator int64_t());
+                return (int16_t)(operator int64_t());
             }
         };
 
