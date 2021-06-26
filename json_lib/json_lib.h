@@ -1137,7 +1137,7 @@ namespace imalyavskiy
             using event_t               = e_value_events;
             using state_t               = e_value_states;
             using EventToStateTable_t   = StateTable<state_t, event_t>;
-            using ParserItem_t          = pair_t<boolean_t, parser::ptr>;
+            using ParserItem_t          = pair_t<typename boolean_t, typename parser::ptr>;
         public:
             value_parser_t()
                 : m_event_2_state_table
@@ -1272,7 +1272,7 @@ namespace imalyavskiy
         protected:
             const EventToStateTable_t m_event_2_state_table;
 
-            parser::ptr m_val_parser;
+            typename parser::ptr m_val_parser;
         };
     #pragma endregion
     //
@@ -1386,8 +1386,8 @@ namespace imalyavskiy
         protected:
             const EventToStateTable_t m_event_2_state_table;
 
-            parser::ptr m_key_parser;
-            parser::ptr m_val_parser;
+            typename parser::ptr m_key_parser;
+            typename parser::ptr m_val_parser;
         };
     #pragma endregion 
     //////////////////////////////////////////////////////////////////////////
