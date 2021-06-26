@@ -138,8 +138,7 @@ TEST(CompleteObjectTest, test0000_EmptyObject)
 
 TEST(CompleteObjectTest, test0001_EmptySubObject)
 {
-    const std::string data(
-        "{\"1\":{}}");
+    const std::string data("{\"1\":{}}");
 
     json::obj jsobj{};
 
@@ -148,8 +147,7 @@ TEST(CompleteObjectTest, test0001_EmptySubObject)
 
 TEST(CompleteObjectTest, test0002_TwoEmptySubObjects)
 {
-    const std::string data(
-        "{\"1\":{},\"2\":{}}");
+    const std::string data("{\"1\":{},\"2\":{}}");
 
     json::obj jsobj{};
 
@@ -158,8 +156,7 @@ TEST(CompleteObjectTest, test0002_TwoEmptySubObjects)
 
 TEST(CompleteObjectTest, test0003_EmptyArray)
 {
-    const std::string data(
-        "{\"1\":[]}");
+    const std::string data("{\"1\":[]}");
 
     json::obj jsobj{};
 
@@ -168,8 +165,7 @@ TEST(CompleteObjectTest, test0003_EmptyArray)
 
 TEST(CompleteObjectTest, test0004_EmptyArrayAndSubObject)
 {
-    const std::string data(
-        "{\"1\":[],\"2\":{}}");
+    const std::string data("{\"1\":[],\"2\":{}}");
 
     json::obj jsobj{};
 
@@ -178,8 +174,7 @@ TEST(CompleteObjectTest, test0004_EmptyArrayAndSubObject)
 
 TEST(CompleteObjectTest, test0005_TwoStringValues)
 {
-    const std::string data(
-        "{\"1\":\"1\",\"2\":\"2\"}");
+    const std::string data("{\"1\":\"1\",\"2\":\"2\"}");
 
     json::obj jsobj{};
 
